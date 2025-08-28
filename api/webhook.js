@@ -1,9 +1,11 @@
-const { Telegraf, Markup } = require('telegraf');
-const admin = require('firebase-admin');
-const axios = require('axios');
-const fs = require('fs');
-const path = require('path');
-require('dotenv').config();
+import { Telegraf, Markup } from 'telegraf';
+import admin from 'firebase-admin';
+import axios from 'axios';
+import fs from 'fs';
+import path from 'path';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 // Initialize Firebase Admin
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || '{}');
@@ -447,10 +449,19 @@ bot.catch((err, ctx) => {
   console.log(`Error for ${ctx.updateType}:`, err);
 });
 
-// Start bot
-console.log('Starting Friday Bingo Bot...');
-bot.launch();
-
-// Graceful stop
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+// Vercel serverless function export
+export default async function handler(req, res) {
+  // Handle webhook requests
+  if (req.method === 'POST') {
+    try {
+      // Process the webhook update
+      await bot.handleUpdate(req.body);
+      res.status(200).json({ ok: true });
+    } catch (error) {
+      console.error('Webhook error:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  } else {
+    res.status(405).json({ error: 'Method not allowed' });
+  }
+}

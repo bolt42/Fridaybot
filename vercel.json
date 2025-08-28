@@ -6,11 +6,11 @@
       "runtime": "@vercel/node@3.0.0"
     }
   },
-      "rewrites": [
-      {
-        "source": "/api/webhook",
-        "destination": "/api/webhook.js"
-      },
+  "rewrites": [
+    {
+      "source": "/api/webhook",
+      "destination": "/api/webhook.js"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"

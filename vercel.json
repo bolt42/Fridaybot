@@ -1,6 +1,4 @@
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
   "functions": {
     "bot/index.js": {
       "runtime": "@vercel/node@3.0.0"
@@ -16,4 +14,5 @@
       "destination": "/index.html"
     }
   ]
+
 }

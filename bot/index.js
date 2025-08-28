@@ -32,7 +32,7 @@ const texts = {
     welcome: 'እንኳን ወደ ዓርብ ቢንጎ በደህና መጣህ! /playgame ተጫውተህ ጨዋታውን ጀምር።',
     gameStarted: 'ጨዋታው ተጀምሯል! ከታች ያለውን ቁልፍ ተጫን።',
     playGame: '🎮 ዓርብ ቢንጎ ተጫወት',
-    deposit: 'ገንዘብ አስቀምጥ 💰',
+    deposit: '/deposit',
     withdraw: 'ገንዘብ አውጣ 💸',
     balance: 'ባላንስ 💳',
     choosePaymentMethod: 'የመክፈያ ዘዴ ምረጥ:',
@@ -54,8 +54,8 @@ const texts = {
     welcome: 'Welcome to Friday Bingo! Use /playgame to start playing.',
     gameStarted: 'Game started! Click the button below.',
     playGame: '🎮 Play Friday Bingo',
-    deposit: 'Deposit 💰',
-    withdraw: 'Withdraw 💸',
+    deposit: '/deposit',
+    withdraw: '/withdraw',
     balance: 'Balance 💳',
     choosePaymentMethod: 'Choose payment method:',
     cbe: 'CBE Bank',
@@ -197,10 +197,11 @@ bot.command('playgame', async (ctx) => {
 bot.command('deposit', async (ctx) => {
   const lang = await getUserLanguage(ctx.from.id);
   
-  if (lang == 'am') {
+  if (lang !== 'am') {
     return ctx.reply(getText(lang, 'onlyAmharic'));
   }
-   ctx.session = { ...ctx.session, step: 'choose_payment' };
+  
+  ctx.session = { ...ctx.session, step: 'choose_payment' };
   
   ctx.reply(
     getText(lang, 'choosePaymentMethod'),
@@ -222,11 +223,13 @@ bot.hears(/CBE|ቴሌብር/, async (ctx) => {
   }
 });
 
+
+
 // Withdrawal flow (Amharic only)
 bot.command('withdraw', async (ctx) => {
   const lang = await getUserLanguage(ctx.from.id);
   
-  if (lang == 'am') {
+  if (lang !== 'am') {
     return ctx.reply(getText(lang, 'onlyAmharic'));
   }
 

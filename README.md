@@ -55,11 +55,12 @@ npm install
 # Copy environment file
 cp .env.example .env
 
-# Start the React app
+# Start both servers (Vite + Bot) with one command
 npm run dev
 
-# Start the bot server (separate terminal)
-npm run bot
+# Or start servers separately
+npm run dev  # Vite dev server only
+npm run bot  # Bot server only
 ```
 
 ### 4. Deployment
@@ -98,6 +99,26 @@ npm run bot
 - N column: 31-45
 - G column: 46-60
 - O column: 61-75
+
+## 🔧 Troubleshooting
+
+### MIME Type Error
+If you encounter "Failed to load module script" errors:
+1. Ensure both servers are running on different ports (Vite: 5173, Bot: 3001)
+2. Clear browser cache and reload
+3. Check that no other processes are using the same ports
+4. Restart the development server with `npm run dev`
+
+### Port Conflicts
+- Vite dev server runs on port 5173
+- Bot server runs on port 3001
+- If ports are in use, modify `vite.config.ts` or bot server port
+
+### Environment Variables
+Make sure these are set in your `.env` file:
+- `TELEGRAM_BOT_TOKEN`
+- `WEBAPP_URL`
+- `ADMIN_IDS` (comma-separated)
 
 ### Winning Patterns
 - Any complete row

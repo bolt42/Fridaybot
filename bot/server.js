@@ -17,7 +17,16 @@ const ADMIN_IDS = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id
 const bot = new TelegramBot(TOKEN, { polling: true });
 const app = express();
 
-app.use(cors());
+// Configure CORS for development and production
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production' 
+    ? [process.env.WEBAPP_URL, 'https://your-app.vercel.app']
+    : ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // In-memory storage (replace with Firebase in production)

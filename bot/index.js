@@ -1,18 +1,24 @@
-const { Telegraf, Markup } = require('telegraf');
-const admin = require('firebase-admin');
-const axios = require('axios');
-const fs = require('fs');
-const path = require('path');
-require('dotenv').config();
+import { Telegraf, Markup } from 'telegraf';
+import admin from 'firebase-admin';
+import axios from 'axios';
+import fs from 'fs';
+import dotenv from 'dotenv';
+import { readFileSync } from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// Initialize Firebase Admin
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || '{}');
+const serviceAccount = JSON.parse(
+  readFileSync(path.join(__dirname, "../firebase_server.json"), "utf8")
+);
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
   databaseURL: process.env.FIREBASE_DATABASE_URL
 });
 
-const db = admin.firestore();
+const db = admin.database();
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
 // Admin user IDs
@@ -72,8 +78,9 @@ const texts = {
 // Helper functions
 const getUserLanguage = async (userId) => {
   try {
-    const userDoc = await db.collection('users').doc(userId.toString()).get();
-    return userDoc.exists ? userDoc.data().language || 'en' : 'en';
+    const userSnapshot = await db.ref(`users/${userId}`).once('value');
+    const userData = userSnapshot.val();
+    return userData ? userData.language || 'en' : 'en';
   } catch (error) {
     return 'en';
   }
@@ -85,10 +92,11 @@ const getText = (lang, key) => {
 
 const createOrUpdateUser = async (ctx) => {
   const userId = ctx.from.id.toString();
-  const userRef = db.collection('users').doc(userId);
-  const userDoc = await userRef.get();
+  const userRef = db.ref(`users/${userId}`);
+  const userSnapshot = await userRef.once('value');
+  const userData = userSnapshot.val();
 
-  if (!userDoc.exists) {
+  if (!userData) {
     await userRef.set({
       telegramId: ctx.from.id.toString(),
       username: ctx.from.username || '',
@@ -97,13 +105,13 @@ const createOrUpdateUser = async (ctx) => {
       balance: 50, // Initial bonus
       language: 'en',
       isAdmin: ADMIN_IDS.includes(ctx.from.id),
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      lastActive: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: Date.now(),
+      lastActive: Date.now()
     });
     return true; // New user
   } else {
     await userRef.update({
-      lastActive: admin.firestore.FieldValue.serverTimestamp()
+      lastActive: Date.now()
     });
     return false; // Existing user
   }
@@ -139,16 +147,22 @@ const parseReceiptSMS = (text) => {
 
 const validateTransaction = async (transactionId, method) => {
   // Check if transaction ID already exists
-  const transactionsRef = db.collection('transactions');
-  const query = await transactionsRef
-    .where('details.transactionId', '==', transactionId)
-    .where('method', '==', method)
-    .get();
-
-  return query.empty; // Return true if unique
+  const transactionsRef = db.ref('transactions');
+  const snapshot = await transactionsRef.once('value');
+  const transactions = snapshot.val();
+  
+  if (!transactions) return true; // No transactions exist, so it's unique
+  
+  // Check if transaction ID already exists
+  for (const key in transactions) {
+    const transaction = transactions[key];
+    if (transaction.details?.transactionId === transactionId && transaction.method === method) {
+      return false; // Transaction already exists
+    }
+  }
+  
+  return true; // Transaction is unique
 };
-
-// Bot commands
 bot.command('start', async (ctx) => {
   const isNewUser = await createOrUpdateUser(ctx);
   const lang = await getUserLanguage(ctx.from.id);
@@ -181,13 +195,7 @@ bot.command('playgame', async (ctx) => {
 
 // Deposit flow (Amharic only)
 bot.command('deposit', async (ctx) => {
-  const lang = await getUserLanguage(ctx.from.id);
-  
-  if (lang !== 'am') {
-    return ctx.reply(getText(lang, 'onlyAmharic'));
-  }
-
-  ctx.session = { ...ctx.session, step: 'choose_payment' };
+   ctx.session = { ...ctx.session, step: 'choose_payment' };
   
   ctx.reply(
     getText(lang, 'choosePaymentMethod'),
@@ -227,10 +235,11 @@ bot.command('balance', async (ctx) => {
   const lang = await getUserLanguage(ctx.from.id);
   
   try {
-    const userDoc = await db.collection('users').doc(userId).get();
+    const userSnapshot = await db.ref(`users/${userId}`).once('value');
+    const userData = userSnapshot.val();
     
-    if (userDoc.exists) {
-      const balance = userDoc.data().balance || 0;
+    if (userData) {
+      const balance = userData.balance || 0;
       ctx.reply(`${getText(lang, 'balance')}: ${balance.toLocaleString()} Birr`);
     } else {
       ctx.reply(getText(lang, 'userNotFound'));
@@ -281,26 +290,26 @@ bot.on('text', async (ctx) => {
     ctx.reply(getText(lang, 'receiptReceived'));
 
     // Create transaction record
-    const transactionRef = await db.collection('transactions').add({
+    const transactionRef = db.ref('transactions').push();
+    await transactionRef.set({
       userId: userId,
       type: 'deposit',
       amount: receiptData.amount,
       method: receiptData.method,
       status: 'completed',
       details: receiptData,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      completedAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: Date.now(),
+      completedAt: Date.now()
     });
 
     // Update user balance
-    const userRef = db.collection('users').doc(userId);
+    const userRef = db.ref(`users/${userId}`);
+    const userSnapshot = await userRef.once('value');
+    const currentBalance = userSnapshot.val()?.balance || 0;
+    const newBalance = currentBalance + receiptData.amount;
     await userRef.update({
-      balance: admin.firestore.FieldValue.increment(receiptData.amount)
+      balance: newBalance
     });
-
-    // Get new balance
-    const userDoc = await userRef.get();
-    const newBalance = userDoc.data().balance;
 
     ctx.reply(`${getText(lang, 'depositSuccessful')} ${newBalance.toLocaleString()} Birr`);
     
@@ -317,8 +326,9 @@ bot.on('text', async (ctx) => {
     }
 
     // Check user balance
-    const userDoc = await db.collection('users').doc(userId).get();
-    const balance = userDoc.data()?.balance || 0;
+    const userSnapshot = await db.ref(`users/${userId}`).once('value');
+    const userData = userSnapshot.val();
+    const balance = userData?.balance || 0;
     
     if (balance < amount) {
       return ctx.reply(getText(lang, 'insufficientBalance'));
@@ -335,19 +345,24 @@ bot.on('text', async (ctx) => {
     const amount = ctx.session.amount;
 
     // Create withdrawal request
-    const withdrawalRef = await db.collection('withdrawal_requests').add({
+    const withdrawalRef = db.ref('withdrawal_requests').push();
+    const withdrawalKey = withdrawalRef.key;
+    await withdrawalRef.set({
       userId: userId,
       username: ctx.from.username || '',
       amount: amount,
       accountType: accountDetails.includes('@') || accountDetails.length > 10 ? 'bank' : 'telebirr',
       accountDetails: accountDetails,
       status: 'pending',
-      requestedAt: admin.firestore.FieldValue.serverTimestamp()
+      requestedAt: Date.now()
     });
 
     // Lock funds (reduce balance)
-    await db.collection('users').doc(userId).update({
-      balance: admin.firestore.FieldValue.increment(-amount)
+    const userRef = db.ref(`users/${userId}`);
+    const userSnapshot = await userRef.once('value');
+    const currentBalance = userSnapshot.val()?.balance || 0;
+    await userRef.update({
+      balance: currentBalance - amount
     });
 
     ctx.reply(getText(lang, 'withdrawalRequested'));
@@ -359,8 +374,8 @@ bot.on('text', async (ctx) => {
           adminId,
           `New withdrawal request:\nUser: @${ctx.from.username}\nAmount: ${amount} Birr\nAccount: ${accountDetails}`,
           Markup.inlineKeyboard([
-            Markup.button.callback('✅ Approve', `approve_${withdrawalRef.id}`),
-            Markup.button.callback('❌ Reject', `reject_${withdrawalRef.id}`)
+            Markup.button.callback('✅ Approve', `approve_${withdrawalKey}`),
+            Markup.button.callback('❌ Reject', `reject_${withdrawalKey}`)
           ])
         );
       } catch (error) {
@@ -383,19 +398,18 @@ bot.action(/^(approve|reject)_(.+)$/, async (ctx) => {
   const requestId = ctx.match[2];
 
   try {
-    const requestRef = db.collection('withdrawal_requests').doc(requestId);
-    const requestDoc = await requestRef.get();
+    const requestRef = db.ref(`withdrawal_requests/${requestId}`);
+    const requestSnapshot = await requestRef.once('value');
+    const requestData = requestSnapshot.val();
     
-    if (!requestDoc.exists) {
+    if (!requestData) {
       return ctx.answerCbQuery('Request not found');
     }
-
-    const requestData = requestDoc.data();
     
     if (action === 'approve') {
       await requestRef.update({
         status: 'completed',
-        processedAt: admin.firestore.FieldValue.serverTimestamp(),
+        processedAt: Date.now(),
         processedBy: ctx.from.id.toString()
       });
 
@@ -413,13 +427,16 @@ bot.action(/^(approve|reject)_(.+)$/, async (ctx) => {
     } else {
       await requestRef.update({
         status: 'cancelled',
-        processedAt: admin.firestore.FieldValue.serverTimestamp(),
+        processedAt: Date.now(),
         processedBy: ctx.from.id.toString()
       });
 
       // Return funds to user
-      await db.collection('users').doc(requestData.userId).update({
-        balance: admin.firestore.FieldValue.increment(requestData.amount)
+      const userRef = db.ref(`users/${requestData.userId}`);
+      const userSnapshot = await userRef.once('value');
+      const currentBalance = userSnapshot.val()?.balance || 0;
+      await userRef.update({
+        balance: currentBalance + requestData.amount
       });
 
       // Notify user
@@ -447,10 +464,15 @@ bot.catch((err, ctx) => {
   console.log(`Error for ${ctx.updateType}:`, err);
 });
 
-// Start bot
-console.log('Starting Friday Bingo Bot...');
-bot.launch();
+// Export bot for serverless function
+export default bot;
 
-// Graceful stop
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+// Start bot if running directly (not as serverless function)
+if (process.env.NODE_ENV !== 'production') {
+  console.log('Starting Friday Bingo Bot...');
+  bot.launch();
+
+  // Graceful stop
+  process.once('SIGINT', () => bot.stop('SIGINT'));
+  process.once('SIGTERM', () => bot.stop('SIGTERM'));
+}

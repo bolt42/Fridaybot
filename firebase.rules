@@ -6,28 +6,46 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // Rooms are readable by all, writable by admins
+    // Rooms are readable by all authenticated users
     match /rooms/{roomId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && 
-        (request.auth.token.admin == true || 
-         resource.data.createdBy == request.auth.uid);
+                      resource.data.createdBy == request.auth.uid ||
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
     }
     
-    // Game states are readable by players in the room
-    match /gameStates/{gameId} {
-      allow read, write: if request.auth != null;
+    // Games are readable by participants
+    match /games/{gameId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+                      request.auth.uid in resource.data.playerIds ||
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
     }
     
-    // Transactions are readable by the user who made them
+    // Bingo cards are readable by all authenticated users
+    match /bingo_cards/{cardId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    // Transactions are readable by the user or admin
     match /transactions/{transactionId} {
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow write: if request.auth != null;
+      allow read: if request.auth != null && 
+                     (resource.data.userId == request.auth.uid ||
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true);
+      allow write: if request.auth != null && 
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
     }
     
-    // Admin-only access to admin collections
-    match /admin/{document=**} {
-      allow read, write: if request.auth != null && request.auth.token.admin == true;
+    // Withdrawal requests are readable by the user or admin
+    match /withdrawal_requests/{requestId} {
+      allow read: if request.auth != null && 
+                     (resource.data.userId == request.auth.uid ||
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true);
+      allow write: if request.auth != null && 
+                      (resource.data.userId == request.auth.uid ||
+                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true);
     }
   }
 }

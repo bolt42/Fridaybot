@@ -1,26 +1,24 @@
 {
-  "version": 2,
-  "builds": [
+  "functions": {
+    "bot/index.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "rewrites": [
     {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
+      "source": "/api/webhook",
+      "destination": "/bot/index.js"
     },
     {
-      "src": "bot/server.js",
-      "use": "@vercel/node"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/bot/server.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
-  ]
+  "env": {
+    "BOT_TOKEN": "@bot_token",
+    "ADMIN_IDS": "@admin_ids",
+    "MINI_APP_URL": "@mini_app_url",
+    "FIREBASE_SERVICE_ACCOUNT": "@firebase_service_account",
+    "FIREBASE_DATABASE_URL": "@firebase_database_url"
+  }
 }

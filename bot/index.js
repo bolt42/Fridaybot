@@ -1,25 +1,24 @@
 import { Telegraf, Markup } from 'telegraf';
-import admin from 'firebase-admin';
+import { initializeApp } from 'firebase/app';
+import { getDatabase, ref, set, get, update, push, once, val } from 'firebase/database';
 import axios from 'axios';
-import fs from 'fs';
 import dotenv from 'dotenv';
-import { readFileSync } from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
+
 dotenv.config();
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
-const serviceAccount = JSON.parse(
-  readFileSync(path.join(__dirname, "../firebase_server.json"), "utf8")
-);
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
+// Initialize Firebase
+const firebaseConfig = {
   databaseURL: process.env.FIREBASE_DATABASE_URL
-});
+};
 
-const db = admin.database();
-const bot = new Telegraf(process.env.BOT_TOKEN);
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const bot = new Telegraf(process.env.BOT_TOKEN || '');
+
+// Check if bot token is available
+if (!process.env.BOT_TOKEN) {
+  console.error('BOT_TOKEN environment variable is not set!');
+}
 
 // Admin user IDs
 const ADMIN_IDS = process.env.ADMIN_IDS ? process.env.ADMIN_IDS.split(',').map(id => parseInt(id)) : [];
@@ -78,7 +77,8 @@ const texts = {
 // Helper functions
 const getUserLanguage = async (userId) => {
   try {
-    const userSnapshot = await db.ref(`users/${userId}`).once('value');
+    const userRef = ref(db, `users/${userId}`);
+    const userSnapshot = await get(userRef);
     const userData = userSnapshot.val();
     return userData ? userData.language || 'en' : 'en';
   } catch (error) {
@@ -92,12 +92,12 @@ const getText = (lang, key) => {
 
 const createOrUpdateUser = async (ctx) => {
   const userId = ctx.from.id.toString();
-  const userRef = db.ref(`users/${userId}`);
-  const userSnapshot = await userRef.once('value');
+  const userRef = ref(db, `users/${userId}`);
+  const userSnapshot = await get(userRef);
   const userData = userSnapshot.val();
 
   if (!userData) {
-    await userRef.set({
+    await set(userRef, {
       telegramId: ctx.from.id.toString(),
       username: ctx.from.username || '',
       firstName: ctx.from.first_name || '',
@@ -110,7 +110,7 @@ const createOrUpdateUser = async (ctx) => {
     });
     return true; // New user
   } else {
-    await userRef.update({
+    await update(userRef, {
       lastActive: Date.now()
     });
     return false; // Existing user
@@ -147,8 +147,8 @@ const parseReceiptSMS = (text) => {
 
 const validateTransaction = async (transactionId, method) => {
   // Check if transaction ID already exists
-  const transactionsRef = db.ref('transactions');
-  const snapshot = await transactionsRef.once('value');
+  const transactionsRef = ref(db, 'transactions');
+  const snapshot = await get(transactionsRef);
   const transactions = snapshot.val();
   
   if (!transactions) return true; // No transactions exist, so it's unique
@@ -235,7 +235,8 @@ bot.command('balance', async (ctx) => {
   const lang = await getUserLanguage(ctx.from.id);
   
   try {
-    const userSnapshot = await db.ref(`users/${userId}`).once('value');
+    const userRef = ref(db, `users/${userId}`);
+    const userSnapshot = await get(userRef);
     const userData = userSnapshot.val();
     
     if (userData) {
@@ -290,8 +291,9 @@ bot.on('text', async (ctx) => {
     ctx.reply(getText(lang, 'receiptReceived'));
 
     // Create transaction record
-    const transactionRef = db.ref('transactions').push();
-    await transactionRef.set({
+    const transactionsRef = ref(db, 'transactions');
+    const newTransactionRef = push(transactionsRef);
+    await set(newTransactionRef, {
       userId: userId,
       type: 'deposit',
       amount: receiptData.amount,
@@ -303,11 +305,11 @@ bot.on('text', async (ctx) => {
     });
 
     // Update user balance
-    const userRef = db.ref(`users/${userId}`);
-    const userSnapshot = await userRef.once('value');
+    const userRef = ref(db, `users/${userId}`);
+    const userSnapshot = await get(userRef);
     const currentBalance = userSnapshot.val()?.balance || 0;
     const newBalance = currentBalance + receiptData.amount;
-    await userRef.update({
+    await update(userRef, {
       balance: newBalance
     });
 
@@ -326,7 +328,8 @@ bot.on('text', async (ctx) => {
     }
 
     // Check user balance
-    const userSnapshot = await db.ref(`users/${userId}`).once('value');
+    const userRef = ref(db, `users/${userId}`);
+    const userSnapshot = await get(userRef);
     const userData = userSnapshot.val();
     const balance = userData?.balance || 0;
     
@@ -345,9 +348,10 @@ bot.on('text', async (ctx) => {
     const amount = ctx.session.amount;
 
     // Create withdrawal request
-    const withdrawalRef = db.ref('withdrawal_requests').push();
-    const withdrawalKey = withdrawalRef.key;
-    await withdrawalRef.set({
+    const withdrawalRequestsRef = ref(db, 'withdrawal_requests');
+    const newWithdrawalRef = push(withdrawalRequestsRef);
+    const withdrawalKey = newWithdrawalRef.key;
+    await set(newWithdrawalRef, {
       userId: userId,
       username: ctx.from.username || '',
       amount: amount,
@@ -358,10 +362,10 @@ bot.on('text', async (ctx) => {
     });
 
     // Lock funds (reduce balance)
-    const userRef = db.ref(`users/${userId}`);
-    const userSnapshot = await userRef.once('value');
+    const userRef = ref(db, `users/${userId}`);
+    const userSnapshot = await get(userRef);
     const currentBalance = userSnapshot.val()?.balance || 0;
-    await userRef.update({
+    await update(userRef, {
       balance: currentBalance - amount
     });
 
@@ -398,8 +402,8 @@ bot.action(/^(approve|reject)_(.+)$/, async (ctx) => {
   const requestId = ctx.match[2];
 
   try {
-    const requestRef = db.ref(`withdrawal_requests/${requestId}`);
-    const requestSnapshot = await requestRef.once('value');
+    const requestRef = ref(db, `withdrawal_requests/${requestId}`);
+    const requestSnapshot = await get(requestRef);
     const requestData = requestSnapshot.val();
     
     if (!requestData) {
@@ -407,7 +411,7 @@ bot.action(/^(approve|reject)_(.+)$/, async (ctx) => {
     }
     
     if (action === 'approve') {
-      await requestRef.update({
+      await update(requestRef, {
         status: 'completed',
         processedAt: Date.now(),
         processedBy: ctx.from.id.toString()
@@ -425,17 +429,17 @@ bot.action(/^(approve|reject)_(.+)$/, async (ctx) => {
 
       ctx.editMessageText(`✅ Withdrawal approved for ${requestData.amount} Birr`);
     } else {
-      await requestRef.update({
+      await update(requestRef, {
         status: 'cancelled',
         processedAt: Date.now(),
         processedBy: ctx.from.id.toString()
       });
 
       // Return funds to user
-      const userRef = db.ref(`users/${requestData.userId}`);
-      const userSnapshot = await userRef.once('value');
+      const userRef = ref(db, `users/${requestData.userId}`);
+      const userSnapshot = await get(userRef);
       const currentBalance = userSnapshot.val()?.balance || 0;
-      await userRef.update({
+      await update(userRef, {
         balance: currentBalance + requestData.amount
       });
 

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Room, Game } from '../types';
-import { collection, onSnapshot, doc, getDoc, updateDoc, addDoc, query, where, orderBy } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { getDatabase, ref, onValue, update, get } from 'firebase/database';
+import { app } from '../config/firebase';
 
 interface AppContextType {
   user: User | null;
@@ -56,18 +56,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   useEffect(() => {
-    // Listen to rooms
-    const unsubscribeRooms = onSnapshot(
-      query(collection(db, 'rooms'), orderBy('createdAt', 'desc')),
-      (snapshot) => {
-        const roomsData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate() || new Date()
+    // Listen to rooms from Firebase Realtime Database
+    const db = getDatabase(app);
+    const roomsRef = ref(db, 'rooms');
+    
+    const unsubscribeRooms = onValue(roomsRef, (snapshot) => {
+      const roomsData = snapshot.val();
+      if (roomsData) {
+        const roomsArray = Object.entries(roomsData).map(([id, roomData]: [string, any]) => ({
+          id,
+          name: roomData.name,
+          betAmount: roomData.betAmount || 0,
+          maxPlayers: roomData.maxPlayers || 10,
+          isActive: roomData.status === 'active',
+          isDemo: false,
+          createdAt: new Date(roomData.createdAt),
+          createdBy: roomData.createdBy || 'admin'
         })) as Room[];
-        setRooms(roomsData);
+        setRooms(roomsArray);
+      } else {
+        setRooms([]);
       }
-    );
+    });
 
     return () => {
       unsubscribeRooms();
@@ -78,11 +88,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!user) return;
     
     const newBalance = user.balance + amount;
-    const userRef = doc(db, 'users', user.id);
+    const db = getDatabase(app);
+    const userRef = ref(db, `users/${user.id}`);
     
-    await updateDoc(userRef, {
+    await update(userRef, {
       balance: newBalance,
-      lastActive: new Date()
+      lastActive: Date.now()
     });
     
     setUser({ ...user, balance: newBalance });

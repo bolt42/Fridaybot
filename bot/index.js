@@ -1,6 +1,6 @@
 import { Telegraf, Markup } from 'telegraf';
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, set, get, update, push, once, val } from 'firebase/database';
+import { getDatabase, ref, set, get, update, push } from 'firebase/database';
 import axios from 'axios';
 import dotenv from 'dotenv';
 
@@ -195,6 +195,11 @@ bot.command('playgame', async (ctx) => {
 
 // Deposit flow (Amharic only)
 bot.command('deposit', async (ctx) => {
+  const lang = await getUserLanguage(ctx.from.id);
+  
+  if (lang == 'am') {
+    return ctx.reply(getText(lang, 'onlyAmharic'));
+  }
    ctx.session = { ...ctx.session, step: 'choose_payment' };
   
   ctx.reply(
@@ -221,7 +226,7 @@ bot.hears(/CBE|ቴሌብር/, async (ctx) => {
 bot.command('withdraw', async (ctx) => {
   const lang = await getUserLanguage(ctx.from.id);
   
-  if (lang !== 'am') {
+  if (lang == 'am') {
     return ctx.reply(getText(lang, 'onlyAmharic'));
   }
 
@@ -265,6 +270,169 @@ bot.command('admin', async (ctx) => {
       ['Game Stats', 'Back']
     ]).resize()
   );
+});
+
+// Handle admin text commands
+bot.hears('Create Room', async (ctx) => {
+  if (!ADMIN_IDS.includes(ctx.from.id)) {
+    return ctx.reply('Unauthorized');
+  }
+
+  ctx.session = { ...ctx.session, step: 'create_room_name' };
+  ctx.reply('Enter room name:');
+});
+
+// Test command to create a room quickly
+bot.command('createroom', async (ctx) => {
+  if (!ADMIN_IDS.includes(ctx.from.id)) {
+    return ctx.reply('Unauthorized');
+  }
+
+  try {
+    const roomsRef = ref(db, 'rooms');
+    const newRoomRef = push(roomsRef);
+    const roomId = newRoomRef.key;
+    
+    await set(newRoomRef, {
+      name: `Test Room ${Date.now()}`,
+      status: 'active',
+      betAmount: 50,
+      maxPlayers: 20,
+      players: {},
+      createdAt: Date.now(),
+      createdBy: ctx.from.id.toString()
+    });
+
+    ctx.reply(`✅ Test room created successfully!\nRoom ID: ${roomId}`);
+  } catch (error) {
+    console.error('Error creating test room:', error);
+    ctx.reply('❌ Error creating test room.');
+  }
+});
+
+bot.hears('List Rooms', async (ctx) => {
+  if (!ADMIN_IDS.includes(ctx.from.id)) {
+    return ctx.reply('Unauthorized');
+  }
+
+  try {
+    const roomsRef = ref(db, 'rooms');
+    const snapshot = await get(roomsRef);
+    const rooms = snapshot.val();
+
+    if (!rooms) {
+      return ctx.reply('No rooms found.');
+    }
+
+    let message = '📋 Active Rooms:\n\n';
+    for (const [roomId, room] of Object.entries(rooms)) {
+      const status = room.status || 'active';
+      const playerCount = room.players ? Object.keys(room.players).length : 0;
+      message += `🏠 ${room.name}\n`;
+      message += `   ID: ${roomId}\n`;
+      message += `   Status: ${status}\n`;
+      message += `   Players: ${playerCount}\n`;
+      message += `   Created: ${new Date(room.createdAt).toLocaleString()}\n\n`;
+    }
+
+    ctx.reply(message);
+  } catch (error) {
+    console.error('Error listing rooms:', error);
+    ctx.reply('Error fetching rooms.');
+  }
+});
+
+bot.hears('Pending Withdrawals', async (ctx) => {
+  if (!ADMIN_IDS.includes(ctx.from.id)) {
+    return ctx.reply('Unauthorized');
+  }
+
+  try {
+    const withdrawalsRef = ref(db, 'withdrawal_requests');
+    const snapshot = await get(withdrawalsRef);
+    const withdrawals = snapshot.val();
+
+    if (!withdrawals) {
+      return ctx.reply('No pending withdrawals.');
+    }
+
+    const pendingWithdrawals = Object.entries(withdrawals).filter(([_, withdrawal]) => 
+      withdrawal.status === 'pending'
+    );
+
+    if (pendingWithdrawals.length === 0) {
+      return ctx.reply('No pending withdrawals.');
+    }
+
+    let message = '💰 Pending Withdrawals:\n\n';
+    for (const [id, withdrawal] of pendingWithdrawals) {
+      message += `👤 User: @${withdrawal.username}\n`;
+      message += `💵 Amount: ${withdrawal.amount} Birr\n`;
+      message += `🏦 Account: ${withdrawal.accountDetails}\n`;
+      message += `📅 Requested: ${new Date(withdrawal.requestedAt).toLocaleString()}\n\n`;
+    }
+
+    ctx.reply(message);
+  } catch (error) {
+    console.error('Error fetching withdrawals:', error);
+    ctx.reply('Error fetching withdrawals.');
+  }
+});
+
+bot.hears('User Balance', async (ctx) => {
+  if (!ADMIN_IDS.includes(ctx.from.id)) {
+    return ctx.reply('Unauthorized');
+  }
+
+  ctx.session = { ...ctx.session, step: 'check_user_balance' };
+  ctx.reply('Enter user ID or username (without @):');
+});
+
+bot.hears('Game Stats', async (ctx) => {
+  if (!ADMIN_IDS.includes(ctx.from.id)) {
+    return ctx.reply('Unauthorized');
+  }
+
+  try {
+    const usersRef = ref(db, 'users');
+    const transactionsRef = ref(db, 'transactions');
+    const roomsRef = ref(db, 'rooms');
+
+    const [usersSnapshot, transactionsSnapshot, roomsSnapshot] = await Promise.all([
+      get(usersRef),
+      get(transactionsRef),
+      get(roomsRef)
+    ]);
+
+    const users = usersSnapshot.val() || {};
+    const transactions = transactionsSnapshot.val() || {};
+    const rooms = roomsSnapshot.val() || {};
+
+    const totalUsers = Object.keys(users).length;
+    const totalTransactions = Object.keys(transactions).length;
+    const totalRooms = Object.keys(rooms).length;
+    const totalDeposits = Object.values(transactions).filter(t => t.type === 'deposit').length;
+
+    const message = `📊 Game Statistics:\n\n` +
+      `👥 Total Users: ${totalUsers}\n` +
+      `💰 Total Transactions: ${totalTransactions}\n` +
+      `🏠 Total Rooms: ${totalRooms}\n` +
+      `💳 Total Deposits: ${totalDeposits}\n`;
+
+    ctx.reply(message);
+  } catch (error) {
+    console.error('Error fetching stats:', error);
+    ctx.reply('Error fetching statistics.');
+  }
+});
+
+bot.hears('Back', async (ctx) => {
+  if (!ADMIN_IDS.includes(ctx.from.id)) {
+    return ctx.reply('Unauthorized');
+  }
+
+  ctx.session = {};
+  ctx.reply('Welcome back!', Markup.removeKeyboard());
 });
 
 // Handle text messages (for deposits, withdrawals, etc.)
@@ -390,6 +558,72 @@ bot.on('text', async (ctx) => {
     ctx.session = {};
     return;
   }
+
+  // Handle room creation
+  if (ctx.session.step === 'create_room_name') {
+    const roomName = ctx.message.text;
+    
+    try {
+      const roomsRef = ref(db, 'rooms');
+      const newRoomRef = push(roomsRef);
+      const roomId = newRoomRef.key;
+      
+      await set(newRoomRef, {
+        name: roomName,
+        status: 'active',
+        betAmount: 50, // Default bet amount
+        maxPlayers: 20, // Default max players
+        players: {},
+        createdAt: Date.now(),
+        createdBy: ctx.from.id.toString()
+      });
+
+      ctx.reply(`✅ Room "${roomName}" created successfully!\nRoom ID: ${roomId}`);
+      ctx.session = {};
+    } catch (error) {
+      console.error('Error creating room:', error);
+      ctx.reply('❌ Error creating room. Please try again.');
+      ctx.session = {};
+    }
+    return;
+  }
+
+  // Handle user balance check
+  if (ctx.session.step === 'check_user_balance') {
+    const userInput = ctx.message.text;
+    
+    try {
+      let userData = null;
+      
+      // Try to find user by username or ID
+      const usersRef = ref(db, 'users');
+      const snapshot = await get(usersRef);
+      const users = snapshot.val() || {};
+      
+      // Check if input is a username (without @)
+      if (userInput.startsWith('@')) {
+        const username = userInput.substring(1);
+        userData = Object.values(users).find(user => user.username === username);
+      } else {
+        // Check if input is a user ID
+        userData = users[userInput];
+      }
+
+      if (userData) {
+        const balance = userData.balance || 0;
+        ctx.reply(`👤 User: @${userData.username || 'Unknown'}\n💳 Balance: ${balance.toLocaleString()} Birr`);
+      } else {
+        ctx.reply('❌ User not found. Please check the username or ID.');
+      }
+      
+      ctx.session = {};
+    } catch (error) {
+      console.error('Error checking user balance:', error);
+      ctx.reply('❌ Error checking user balance.');
+      ctx.session = {};
+    }
+    return;
+  }
 });
 
 // Handle admin approval/rejection
@@ -472,11 +706,23 @@ bot.catch((err, ctx) => {
 export default bot;
 
 // Start bot if running directly (not as serverless function)
-if (process.env.NODE_ENV !== 'production') {
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
   console.log('Starting Friday Bingo Bot...');
   bot.launch();
 
   // Graceful stop
-  process.once('SIGINT', () => bot.stop('SIGINT'));
-  process.once('SIGTERM', () => bot.stop('SIGTERM'));
+  process.once('SIGINT', () => {
+    try {
+      bot.stop('SIGINT');
+    } catch (error) {
+      console.log('Bot already stopped');
+    }
+  });
+  process.once('SIGTERM', () => {
+    try {
+      bot.stop('SIGTERM');
+    } catch (error) {
+      console.log('Bot already stopped');
+    }
+  });
 }

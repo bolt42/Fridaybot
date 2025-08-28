@@ -1,4 +1,6 @@
 {
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
   "functions": {
     "bot/index.js": {
       "runtime": "nodejs18.x"
@@ -14,5 +16,4 @@
       "destination": "/index.html"
     }
   ]
-
 }

@@ -413,36 +413,84 @@ async function processDeposit(userId, transactionDetails, chatId) {
   );
 }
 
-
-// api/bot.js
 export default async function handler(req, res) {
-  console.log("🚀 Webhook hit!", req.method);
+  console.log("🚀 Webhook hit!", req.method, req.url);
+
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === "OPTIONS") {
+    res.status(200).end();
+    return;
+  }
+
+  if (req.method === "GET") {
+    res.status(200).json({ status: "Bot is running", timestamp: new Date().toISOString() });
+    return;
+  }
 
   if (req.method === "POST") {
     try {
-      console.log("📩 Update received:", req.body);
+      console.log("📩 Update received:", JSON.stringify(req.body, null, 2));
 
       // Always respond quickly to Telegram
-      res.status(200).send("OK");
+      res.status(200).json({ ok: true });
 
-      // Process asynchronously
-      const { message } = req.body;
-      if (message?.text === "/start") {
-        const chatId = message.chat.id;
-        await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: chatId,
-            text: "Hello! 🚀 Your bot is working on Vercel.",
-          }),
-        });
+      // Process the update
+      const update = req.body;
+
+      if (update.message) {
+        const message = update.message;
+        const text = message.text;
+
+        if (text === "/start") {
+          await handleStartCommand(message);
+        } else if (text === "/playgame") {
+          await handlePlayGameCommand(message);
+        } else if (text === "/deposit") {
+          await handleDepositCommand(message);
+        } else if (text === "/withdraw") {
+          await handleWithdrawCommand(message);
+        } else if (text && text.startsWith("/admin_")) {
+          // Handle admin commands
+          if (text === "/admin_create_room" && ADMIN_IDS.includes(message.from.id)) {
+            await sendMessage(message.chat.id, "Send room details in format:\nRoomName,BetAmount,MaxPlayers");
+          } else if (text.startsWith("/admin_balance") && ADMIN_IDS.includes(message.from.id)) {
+            const parts = text.split(" ");
+            if (parts.length === 3) {
+              const username = parts[1];
+              const amount = parseFloat(parts[2]);
+              
+              const targetUser = Array.from(users.values()).find(u => u.username === username);
+              if (targetUser) {
+                targetUser.balance += amount;
+                users.set(targetUser.id, targetUser);
+                
+                await sendMessage(message.chat.id, `✅ Balance updated for @${username}:\nNew balance: ${targetUser.balance} ETB`);
+                await sendMessage(targetUser.id, `💰 Your balance has been updated!\nChange: ${amount > 0 ? "+" : ""}${amount} ETB\nNew balance: ${targetUser.balance} ETB`);
+              } else {
+                await sendMessage(message.chat.id, `❌ User @${username} not found.`);
+              }
+            }
+          } else {
+            await sendMessage(message.chat.id, "❌ You are not authorized.");
+          }
+        } else {
+          // Handle other text messages (like SMS receipts)
+          console.log("📝 Text message received:", text);
+        }
+      } else if (update.callback_query) {
+        await handleCallbackQuery(update.callback_query);
       }
+
     } catch (err) {
       console.error("❌ Error handling update:", err);
+      res.status(200).json({ ok: true, error: err.message });
     }
   } else {
     console.log("❌ Wrong method:", req.method);
-    res.status(405).send("Method Not Allowed");
+    res.status(405).json({ error: "Method Not Allowed" });
   }
 }

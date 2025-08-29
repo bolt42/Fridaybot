@@ -23,7 +23,7 @@ const Header: React.FC = () => {
             <div className="flex items-center space-x-2 bg-white/10 rounded-lg px-3 py-1.5">
               <Coins className="w-4 h-4 text-yellow-400" />
               <span className="text-white font-medium">
-                {user?.balance?.toFixed(2) || '0.00'}
+                {typeof user?.balance === 'number' ? user.balance.toFixed(2) : '0.00'}
               </span>
             </div>
             

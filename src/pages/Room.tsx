@@ -156,7 +156,7 @@ const Room: React.FC = () => {
             <span className="text-white font-medium">{t('bet_amount')}</span>
           </div>
           <div className="text-2xl font-bold text-white">
-            {currentRoom.isDemoRoom ? t('free_play') : `${currentRoom.betAmount.toFixed(2)}`}
+            {currentRoom.isDemoRoom ? t('free_play') : `${Number(currentRoom.betAmount ?? 0).toFixed(2)}`}
           </div>
         </div>
         
@@ -178,7 +178,7 @@ const Room: React.FC = () => {
           <div className="text-2xl font-bold text-white">
             {currentRoom.isDemoRoom 
               ? t('free_play') 
-              : `${(currentRoom.currentPlayers * currentRoom.betAmount * 0.9).toFixed(2)}`
+              : `${Number(currentRoom.currentPlayers ?? 0) * Number(currentRoom.betAmount ?? 0) * 0.9 === 0 ? '0.00' : (Number(currentRoom.currentPlayers ?? 0) * Number(currentRoom.betAmount ?? 0) * 0.9).toFixed(2)}`
             }
           </div>
         </div>

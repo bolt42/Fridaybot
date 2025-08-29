@@ -137,7 +137,7 @@ return (
     <div className="min-h-screen bg-gradient-to-br from-purple-800 via-purple-900 to-blue-900 flex flex-col items-center p-4 text-white">
       
       {/* Top info row */}
-      <div className="grid grid-cols-6 gap-3 mb-6 w-full max-w-5xl">
+      <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 mb-6 w-full max-w-5xl">
         {["Game EQ7431", "Derash -", "Bonus -", "Players -", "Bet 0", "Call 0"].map(
           (item, idx) => (
             <div
@@ -154,13 +154,13 @@ return (
       <div className="flex flex-col lg:flex-row gap-6 w-full max-w-5xl">
         
         {/* Left: Called numbers */}
-        <div className="flex-1 bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20">
+        <div className="flex-1 bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20 overflow-y-auto max-h-[400px]">
           <h3 className="text-center font-bold mb-3">Called Numbers</h3>
-          <div className="grid grid-cols-5 gap-2">
-            {Array.from({ length: 30 }, (_, i) => i + 1).map((num) => (
+          <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
+            {Array.from({ length: 100 }, (_, i) => i + 1).map((num) => (
               <div
                 key={num}
-                className="w-10 h-10 flex items-center justify-center rounded-lg bg-white/20 font-bold"
+                className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg bg-white/20 font-bold text-xs sm:text-sm"
               >
                 {num}
               </div>
@@ -168,28 +168,39 @@ return (
           </div>
         </div>
 
-        {/* Center: Current call */}
-        <div className="flex flex-col items-center justify-center bg-white/10 backdrop-blur-md p-6 rounded-xl border border-white/20 w-64 mx-auto">
-          <span className="text-lg font-medium mb-2">Current Call</span>
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-3xl font-bold shadow-lg">
-            -
+        {/* Right side: Current call + card */}
+        <div className="flex flex-row gap-6 flex-1 overflow-x-auto">
+          {/* Current Call */}
+          <div className="flex flex-col items-center justify-center bg-white/10 backdrop-blur-md p-6 rounded-xl border border-white/20 min-w-[200px]">
+            <span className="text-lg font-medium mb-2">Current Call</span>
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-3xl font-bold shadow-lg">
+              -
+            </div>
           </div>
-        </div>
 
-        {/* Right: Bingo card */}
-        <div className="flex-1 bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20">
-          <h3 className="text-center font-bold mb-3">Your Card</h3>
-          <BingoGrid
-            cardNumbers={[/* pass numbers here */]}
-            calledNumbers={[]}
-            markedNumbers={[]}
-            onNumberClick={() => {}}
-          />
+          {/* Your Card */}
+          <div className="flex-1 bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20 min-w-[250px]">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="font-bold">Your Card</h3>
+              {/* Card dropdown */}
+              <select className="bg-white/20 text-white rounded px-2 py-1 text-sm outline-none">
+                <option>Card 1</option>
+                <option>Card 2</option>
+                <option>Card 3</option>
+              </select>
+            </div>
+            <BingoGrid
+              cardNumbers={[/* pass numbers here */]}
+              calledNumbers={[]}
+              markedNumbers={[]}
+              onNumberClick={() => {}}
+            />
+          </div>
         </div>
       </div>
 
       {/* Bottom buttons */}
-      <div className="flex gap-4 mt-8 w-full max-w-3xl">
+      <div className="flex flex-col sm:flex-row gap-4 mt-8 w-full max-w-3xl">
         <button className="flex-1 bg-gradient-to-r from-orange-500 to-yellow-500 py-4 rounded-xl font-bold text-lg shadow-lg hover:opacity-90 transition">
           BINGO!
         </button>

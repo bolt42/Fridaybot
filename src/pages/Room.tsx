@@ -257,17 +257,15 @@ const cardNumbers = selectedCard?.numbers ?? [];
   <div className="mt-6">
     {/* Bet button */}
     <button
-      onClick={async () => {
-        const success = await placeBet();
-        if (success) {
-          alert("Bet placed successfully!");
-        } else {
-          alert("Failed to place bet. Please select a card first.");
-        }
-      }}
-      className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow"
+      onClick={handlePlaceBet}   // ✅ use your handler, not placeBet directly
+      disabled={hasBet || selectedCard.claimed} // prevent double bet
+      className={`mt-4 px-4 py-2 rounded-lg shadow font-semibold ${
+        hasBet || selectedCard.claimed
+          ? "bg-gray-500 cursor-not-allowed"
+          : "bg-blue-600 hover:bg-blue-700 text-white"
+      }`}
     >
-      Place Bet
+      {hasBet ? "Bet Placed" : "Place Bet"}
     </button>
   </div>
 ) : (

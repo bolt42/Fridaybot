@@ -13,28 +13,32 @@ function App() {
   const { language } = useLanguageStore();
 
   React.useEffect(() => {
-    // Initialize user from Telegram WebApp
-   if (window.Telegram?.WebApp) {
+  if (window.Telegram?.WebApp) {
     const tg = window.Telegram.WebApp;
     tg.ready();
 
-    const initData = tg.initDataUnsafe;
-    if (initData?.user) {
+    console.log("Telegram initDataUnsafe:", tg.initDataUnsafe);
+
+    const user = tg.initDataUnsafe?.user;
+    if (user) {
       initializeUser({
-        telegramId: initData.user.id.toString(),
-        username: initData.user.username || `${initData.user.first_name || 'user'}_${initData.user.id}`,
-        language: 'en' // or detect from Telegram if available
+        telegramId: user.id.toString(),
+        username: user.username || `${user.first_name || "user"}_${user.id}`,
+        language: "en",
       });
+      return;
     }
-  } else {
-    // Demo mode for local testing
-    initializeUser({
-      telegramId: 'demo123',
-      username: 'demo_user',
-      language: 'en'
-    });
   }
-  }, [initializeUser]);
+
+  // 🚨 If you reach here, it means no Telegram user is passed
+  console.warn("No Telegram user found, using demo mode");
+  initializeUser({
+    telegramId: "demo123",
+    username: "demo_user",
+    language: "en",
+  });
+}, [initializeUser]);
+
 
   if (loading) {
     return <LoadingSpinner />;

@@ -10,27 +10,21 @@ const Room: React.FC = () => {
   const { roomId } = useParams();
   const navigate = useNavigate();
   const { t } = useLanguageStore();
-  const { currentRoom, bingoCards, joinRoom, selectCard, placeBet, checkBingo } = useGameStore();
+  const { currentRoom, bingoCards, joinRoom, selectCard, placeBet, checkBingo , selectedCard } = useGameStore();
   const { user, updateBalance } = useAuthStore();
-  
-const [selectedCard, setSelectedCard] = useState(1);
+ 
   const [markedNumbers, setMarkedNumbers] = useState<number[]>([]);
   const [hasBet, setHasBet] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [gameMessage, setGameMessage] = useState('');
+const cardNumbers = selectedCard?.numbers ?? [];
+
 
   React.useEffect(() => {
     if (roomId) {
       joinRoom(roomId);
     }
   }, [roomId, joinRoom]);
-  const generateCard = () => {
-    const nums = Array.from({ length: 100 }, (_, i) => i + 1);
-    return nums.sort(() => Math.random() - 0.5).slice(0, 25);
-  };
-
-  const cards = [generateCard(), generateCard(), generateCard()];
-  const cardNumbers = cards[selectedCard - 1];
   React.useEffect(() => {
     if (currentRoom?.gameStatus === 'countdown' && countdown > 0) {
       const timer = setInterval(() => {
@@ -202,14 +196,17 @@ const [selectedCard, setSelectedCard] = useState(1);
   <div className="flex justify-between items-center mb-1">
     <h3 className="font-bold text-sm">Your Card</h3>
     <select
-      value={selectedCard}
-      onChange={(e) => setSelectedCard(Number(e.target.value))}
-      className="bg-white/20 text-white rounded px-1 py-0.5 text-[10px]"
-    >
-      <option value={1}>Card 1</option>
-      <option value={2}>Card 2</option>
-      <option value={3}>Card 3</option>
-    </select>
+  value={selectedCard?.id ?? ''}
+  onChange={(e) => selectCard(e.target.value)}
+  className="bg-white/20 text-white rounded px-1 py-0.5 text-[10px]"
+>
+  <option value="" disabled>Select Card</option>
+  {bingoCards.map((card) => (
+    <option key={card.id} value={card.id}>
+      Card {card.serialNumber}
+    </option>
+  ))}
+</select> 
   </div>
 
   {/* Bingo Header Row */}
@@ -226,21 +223,21 @@ const [selectedCard, setSelectedCard] = useState(1);
 
   {/* Numbers Grid */}
   <div className="grid grid-cols-5 gap-1">
-    {cardNumbers.map((num, idx) => {
-      const isMarked = markedNumbers.includes(num);
-      return (
-        <div
-          key={`${num}-${idx}`}
-          onClick={() => handleNumberClick(num)}
-          className={`w-8 h-8 flex items-center justify-center rounded font-bold text-[11px] cursor-pointer transition
-            ${isMarked ? "bg-green-500 text-white scale-105" : "bg-white/20 hover:bg-white/30"}
-          `}
-        >
-          {num === 0 ? "★" : num} {/* FREE space gets a star */}
-        </div>
-      );
-    })}
-  </div>
+  {cardNumbers.flat().map((num, idx) => {
+    const isMarked = markedNumbers.includes(num);
+    return (
+      <div
+        key={`${num}-${idx}`}
+        onClick={() => handleNumberClick(num)}
+        className={`w-8 h-8 flex items-center justify-center rounded font-bold text-[11px] cursor-pointer transition
+          ${isMarked ? "bg-green-500 text-white scale-105" : "bg-white/20 hover:bg-white/30"}
+        `}
+      >
+        {num === 0 ? "★" : num} {/* FREE space gets a star */}
+      </div>
+    );
+  })}
+</div>
 </div>
 </div>
   </div>

@@ -267,8 +267,7 @@ const cardNumbers = selectedCard?.numbers ?? [];
       Leave
     </button>
   </div>
-</div>
-{/* Footer: Betted Players */}
+  {/* Footer: Betted Players */}
 <div className="w-full mt-6 bg-white/10 rounded border border-white/20 p-3">
   <h3 className="font-bold text-sm mb-2">Players in this room</h3>
   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
@@ -297,6 +296,7 @@ const cardNumbers = selectedCard?.numbers ?? [];
   </div>
 </div>
 
+</div>
   );
 };
 

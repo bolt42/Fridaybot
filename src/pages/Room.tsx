@@ -196,18 +196,21 @@ const cardNumbers = selectedCard?.numbers ?? [];
 <div className="flex-1 bg-white/10 p-2 rounded border border-white/20 text-xs">
   <div className="flex justify-between items-center mb-1">
     <h3 className="font-bold text-sm">Your Card</h3>
-    <select
+<select
   value={selectedCard?.id ?? ''}
   onChange={(e) => selectCard(e.target.value)}
   className="bg-white/20 text-white rounded px-1 py-0.5 text-[10px]"
 >
   <option value="" disabled>Select Card</option>
-  {bingoCards.map((card) => (
-    <option key={card.id} value={card.id}>
-      Card {card.serialNumber}
-    </option>
-  ))}
-</select> 
+  {bingoCards
+    .slice() // create copy so sort doesn’t mutate state
+    .sort((a, b) => a.serialNumber - b.serialNumber) // ascending order
+    .map((card) => (
+      <option key={card.id} value={card.id} disabled={card.claimed}>
+        Card {card.serialNumber} {card.claimed ? "(claimed)" : ""}
+      </option>
+    ))}
+</select>
   </div>
 
   {/* Bingo Header Row */}

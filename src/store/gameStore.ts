@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { db } from '../firebase/config';
-import { doc, onSnapshot, updateDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
+import { rtdb } from '../firebase/config';
+import { ref, onValue, get, set, update } from 'firebase/database';
 
 interface BingoCard {
   id: string;
@@ -46,14 +46,12 @@ export const useGameStore = create<GameState>((set, get) => ({
   loading: false,
   
   fetchRooms: () => {
-    const roomsCollection = collection(db, 'rooms');
-    
-    onSnapshot(roomsCollection, (snapshot) => {
-      const rooms = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Room[];
-      
+    const roomsRef = ref(rtdb, 'rooms');
+    onValue(roomsRef, (snapshot) => {
+      const data = snapshot.val();
+      const rooms: Room[] = data
+        ? Object.entries(data).map(([id, value]: [string, any]) => ({ id, ...value }))
+        : [];
       set({ rooms });
     });
   },
@@ -66,10 +64,10 @@ export const useGameStore = create<GameState>((set, get) => ({
       set({ currentRoom: room });
       
       // Subscribe to room updates
-      const roomRef = doc(db, 'rooms', roomId);
-      onSnapshot(roomRef, (doc) => {
-        if (doc.exists()) {
-          const updatedRoom = { id: doc.id, ...doc.data() } as Room;
+      const roomRef = ref(rtdb, 'rooms/' + roomId);
+      onValue(roomRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const updatedRoom = { id: roomId, ...snapshot.val() } as Room;
           set({ currentRoom: updatedRoom });
         }
       });

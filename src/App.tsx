@@ -14,43 +14,11 @@ function App() {
 
   // Mock data for development
   useEffect(() => {
-    const mockRooms: Room[] = [
-      {
-        id: 'demo-room',
-        name: 'Demo Room',
-        betAmount: 0,
-        maxPlayers: 10,
-        isActive: true,
-        isDemo: true,
-        createdAt: new Date(),
-        createdBy: 'system'
-      },
-      {
-        id: 'room-1',
-        name: 'Friday Night Special',
-        betAmount: 50,
-        maxPlayers: 20,
-        isActive: true,
-        isDemo: false,
-        createdAt: new Date(),
-        createdBy: 'admin'
-      },
-      {
-        id: 'room-2',
-        name: 'High Stakes Bingo',
-        betAmount: 100,
-        maxPlayers: 15,
-        isActive: true,
-        isDemo: false,
-        createdAt: new Date(),
-        createdBy: 'admin'
-      }
-    ];
+   
 
     // Mock available rooms in localStorage for demo
-    localStorage.setItem('mockRooms', JSON.stringify(mockRooms));
   }, []);
-
+  
   const handleJoinRoom = (roomId: string) => {
     const mockRooms = JSON.parse(localStorage.getItem('mockRooms') || '[]');
     const room = mockRooms.find((r: Room) => r.id === roomId);

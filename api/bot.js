@@ -1,5 +1,5 @@
 import { ref, get, set } from "firebase/database";
-import { rtdb } from "../firebaseConfig.js"; // adjust path
+import { rtdb } from "../bot/firebaseConfig"; // adjust path
 
 // ====================== ENV CONFIG ======================
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;

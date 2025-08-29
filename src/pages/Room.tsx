@@ -174,36 +174,52 @@ const [selectedCard, setSelectedCard] = useState(1);
     
 
     {/* Your Card */}
-    <div className="flex-1 bg-white/10 p-2 rounded border border-white/20 text-xs">
-      <div className="flex justify-between items-center mb-1">
-        <h3 className="font-bold text-sm">Your Card</h3>
-        <select
-          value={selectedCard}
-          onChange={(e) => setSelectedCard(Number(e.target.value))}
-          className="bg-white/20 text-white rounded px-1 py-0.5 text-[10px]"
+    {/* Your Card */}
+<div className="flex-1 bg-white/10 p-2 rounded border border-white/20 text-xs">
+  <div className="flex justify-between items-center mb-1">
+    <h3 className="font-bold text-sm">Your Card</h3>
+    <select
+      value={selectedCard}
+      onChange={(e) => setSelectedCard(Number(e.target.value))}
+      className="bg-white/20 text-white rounded px-1 py-0.5 text-[10px]"
+    >
+      <option value={1}>Card 1</option>
+      <option value={2}>Card 2</option>
+      <option value={3}>Card 3</option>
+    </select>
+  </div>
+
+  {/* Bingo Header Row */}
+  <div className="grid grid-cols-5 gap-1 mb-1">
+    {["B", "I", "N", "G", "O"].map((letter) => (
+      <div
+        key={letter}
+        className="w-8 h-8 flex items-center justify-center font-bold text-[12px] bg-purple-600 rounded"
+      >
+        {letter}
+      </div>
+    ))}
+  </div>
+
+  {/* Numbers Grid */}
+  <div className="grid grid-cols-5 gap-1">
+    {cardNumbers.map((num, idx) => {
+      const isMarked = markedNumbers.includes(num);
+      return (
+        <div
+          key={`${num}-${idx}`}
+          onClick={() => handleNumberClick(num)}
+          className={`w-8 h-8 flex items-center justify-center rounded font-bold text-[11px] cursor-pointer transition
+            ${isMarked ? "bg-green-500 text-white scale-105" : "bg-white/20 hover:bg-white/30"}
+          `}
         >
-          <option value={1}>Card 1</option>
-          <option value={2}>Card 2</option>
-          <option value={3}>Card 3</option>
-        </select>
-      </div>
-      <div className="grid grid-cols-5 gap-1">
-        {cardNumbers.map((num) => {
-          const isMarked = markedNumbers.includes(num);
-          return (
-            <div
-              key={num}
-              onClick={() => handleNumberClick(num)}
-              className={`w-8 h-8 flex items-center justify-center rounded font-bold text-[11px] cursor-pointer transition
-                ${isMarked ? "bg-green-500 text-white scale-105" : "bg-white/20 hover:bg-white/30"}
-              `}
-            >
-              {num}
-            </div>
-          );
-        })}
-      </div>
-    </div></div>
+          {num === 0 ? "★" : num} {/* FREE space gets a star */}
+        </div>
+      );
+    })}
+  </div>
+</div>
+</div>
   </div>
 
   {/* Bottom buttons */}

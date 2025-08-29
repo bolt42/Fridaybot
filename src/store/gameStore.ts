@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { rtdb } from '../firebase/config';
 import { ref, onValue, get, set as fbset , update } from 'firebase/database';
-
+import { useAuthStore } from '../store/authStore';
 interface BingoCard {
   id: string;
   numbers: number[][];
@@ -87,41 +87,44 @@ export const useGameStore = create<GameState>((set, get) => ({
   
 placeBet: async () => {
   const { currentRoom, selectedCard } = get();
-  const { user } = useAuthStore.getState(); // 🔹 get logged-in user
+  const { user } = useAuthStore.getState(); // ✅ logged in user
+
   if (!currentRoom || !selectedCard || !user) return false;
 
   try {
-    // Mark card as claimed by the user
+    // ✅ Mark card as claimed
     const updatedCard = { ...selectedCard, claimed: true, claimedBy: user.id };
-    const { bingoCards } = get();
-    const updatedCards = bingoCards.map(c =>
-      c.id === selectedCard.id ? updatedCard : c
-    );
 
+    // update local state
     set({
-      bingoCards: updatedCards,
       selectedCard: updatedCard,
+      bingoCards: get().bingoCards.map(c =>
+        c.id === updatedCard.id ? updatedCard : c
+      ),
     });
 
-    // 🔹 Save card in RTDB
-    const cardRef = ref(rtdb, 'bingoCards/' + updatedCard.id);
-    await fbset(cardRef, updatedCard);
+    // ✅ Save player’s bet in RTDB
+    const betRef = ref(
+      rtdb,
+      `rooms/${currentRoom.id}/bets/${user.id}`
+    );
 
-    // 🔹 Add player to room's players list
-    const roomPlayersRef = ref(rtdb, `rooms/${currentRoom.id}/players/${user.id}`);
-    await update(roomPlayersRef, {
-      id: user.id,
+    await fbset(betRef, {
+      playerId: user.id,
       username: user.username,
-      betAmount: currentRoom.betAmount,
       cardId: updatedCard.id,
+      roomId: currentRoom.id,
+      gameId: currentRoom.id, // 🔹 if gameId differs, replace with real game id
+      timestamp: Date.now(),
     });
 
     return true;
   } catch (error) {
-    console.error('Error placing bet:', error);
+    console.error("Error recording bet:", error);
     return false;
   }
 },
+
 
   
   

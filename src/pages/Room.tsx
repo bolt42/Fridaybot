@@ -171,7 +171,7 @@ const [selectedCard, setSelectedCard] = useState(1);
           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-lg font-bold shadow">
             -
           </div>
-        </div>
+        
 
         {/* Your Card */}
         <div className="flex-1 bg-white/10 p-2 rounded border border-white/20 text-xs">
@@ -203,6 +203,7 @@ const [selectedCard, setSelectedCard] = useState(1);
               );
             })}
           </div>
+        </div>
         </div>
       </div>
 

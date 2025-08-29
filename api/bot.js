@@ -1,15 +1,16 @@
 import TelegramBot from "node-telegram-bot-api";
 import { ref, get, set } from "firebase/database";
-import { rtdb } from "../../firebaseConfig.js"; // adjust relative path for your project
+import { rtdb } from "../../firebaseConfig.js"; // ✅ adjust relative path
 
-// ENV
+// ====================== ENV CONFIG ======================
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const WEBAPP_URL = process.env.WEBAPP_URL || "https://your-app.vercel.app";
 const ADMIN_IDS = (process.env.ADMIN_IDS || "")
   .split(",")
-  .map((id) => parseInt(id.trim()));
+  .map((id) => parseInt(id.trim()))
+  .filter(Boolean);
 
-// 🚨 Create bot WITHOUT polling
+// 🚨 Create bot WITHOUT polling (for webhook)
 const bot = new TelegramBot(TOKEN);
 
 // ---- In-memory data (replace with DB for production) ----
@@ -18,7 +19,7 @@ const rooms = new Map();
 const transactions = new Map();
 const withdrawalRequests = new Map();
 
-// ✅ Firebase user registration
+// ====================== FIREBASE USER REG ======================
 async function registerUserToFirebase(user) {
   try {
     const userRef = ref(rtdb, "users/" + user.id);
@@ -47,7 +48,7 @@ async function registerUserToFirebase(user) {
   }
 }
 
-// ---- Bot Commands ----
+// ====================== BOT COMMANDS ======================
 bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
   const user = msg.from;
@@ -86,16 +87,21 @@ bot.onText(/\/playgame/, async (msg) => {
   }
 
   const keyboard = {
-    inline_keyboard: [[{
-      text: "🎮 Play Friday Bingo",
-      web_app: { url: WEBAPP_URL },
-    }]],
+    inline_keyboard: [
+      [
+        {
+          text: "🎮 Play Friday Bingo",
+          web_app: { url: WEBAPP_URL },
+        },
+      ],
+    ],
   };
 
   bot.sendMessage(chatId, "🎯 Ready to play Friday Bingo? Tap the button below!", {
     reply_markup: keyboard,
   });
 });
+
 bot.onText(/\/deposit/, (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
@@ -115,7 +121,6 @@ bot.onText(/\/deposit/, (msg) => {
   bot.sendMessage(chatId, "የክፍያ መንገዱን ይምረጡ:", { reply_markup: keyboard });
 });
 
-// Withdraw
 bot.onText(/\/withdraw/, (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
@@ -409,19 +414,20 @@ async function processDeposit(userId, transactionDetails, chatId) {
 }
 
 // ====================== VERCEL HANDLER ======================
-
-
-// ---- Vercel API Handler ----
 export default async function handler(req, res) {
   if (req.method === "POST") {
     try {
-      await bot.processUpdate(req.body); // ✅ process Telegram update
+      await bot.processUpdate(req.body); // ✅ handle Telegram update
     } catch (err) {
       console.error("❌ Bot update error:", err);
     }
-    return res.status(200).send("ok");
+    return res.status(200).send("ok"); // must return 200 OK
   }
 
-  // Simple GET endpoint to check if deployed
-  return res.status(200).send("🤖 Friday Bingo Bot running on Vercel!");
+  // For browser / health check
+  if (req.method === "GET") {
+    return res.status(200).send("🤖 Friday Bingo Bot running on Vercel!");
+  }
+
+  return res.status(405).send("Method Not Allowed");
 }

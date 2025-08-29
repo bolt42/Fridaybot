@@ -271,28 +271,28 @@ const cardNumbers = selectedCard?.numbers ?? [];
 <div className="w-full mt-6 bg-white/10 rounded border border-white/20 p-3">
   <h3 className="font-bold text-sm mb-2">Players in this room</h3>
   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-    {currentRoom?.players && Object.values(currentRoom.players).length > 0 ? (
-      Object.values(currentRoom.players).map((player: any) => {
-        // Mask username like bug*** 
-        const maskedUsername = player.username
-          ? `${player.username.slice(0, 3)}***`
-          : `user_${player.id.slice(0, 3)}***`;
+    {currentRoom?.players && Object.keys(currentRoom.players || {}).length > 0 ? (
+  Object.values(currentRoom.players || {}).map((player: any) => {
+    const maskedUsername = player.username
+      ? `${player.username.slice(0, 3)}***`
+      : `user_${player.id.slice(0, 3)}***`;
 
-        return (
-          <div
-            key={player.id}
-            className="bg-white/20 rounded p-2 flex flex-col items-center text-center"
-          >
-            <span className="font-semibold">{maskedUsername}</span>
-            <span className="text-xs">Bet: {player.betAmount}</span>
-          </div>
-        );
-      })
-    ) : (
-      <div className="col-span-full text-center text-gray-300">
-        No players have bet yet...
+    return (
+      <div
+        key={player.id}
+        className="bg-white/20 rounded p-2 flex flex-col items-center text-center"
+      >
+        <span className="font-semibold">{maskedUsername}</span>
+        <span className="text-xs">Bet: {player.betAmount}</span>
       </div>
-    )}
+    );
+  })
+) : (
+  <div className="col-span-full text-center text-gray-300">
+    No players have bet yet...
+  </div>
+)}
+
   </div>
 </div>
 

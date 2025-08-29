@@ -4,6 +4,9 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { ref, get, set } from "firebase/database";
+import { rtdb } from "../src/firebase/config"; // adjust path
+
 
 dotenv.config();
 
@@ -25,6 +28,33 @@ const users = new Map();
 const rooms = new Map();
 const transactions = new Map();
 const withdrawalRequests = new Map();
+async function registerUserToFirebase(user) {
+  try {
+    const userRef = ref(rtdb, "users/" + user.id);
+    const snapshot = await get(userRef);
+
+    if (!snapshot.exists()) {
+      const now = new Date().toISOString();
+      const newUser = {
+        telegramId: user.id.toString(),
+        username: user.username || `user_${user.id}`,
+        balance: 50,
+        gamesPlayed: 0,
+        gamesWon: 0,
+        totalWinnings: 0,
+        language: user.language_code || "en",
+        createdAt: now,
+        updatedAt: now,
+      };
+      await set(userRef, newUser);
+      console.log("✅ User registered:", newUser);
+    } else {
+      console.log("🔹 User already exists in RTDB");
+    }
+  } catch (err) {
+    console.error("❌ Error registering user:", err);
+  }
+}
 
 // Initialize demo room
 rooms.set('demo-room', {
@@ -39,8 +69,12 @@ rooms.set('demo-room', {
 });
 
 // Bot Commands
-bot.onText(/\/start/, (msg) => {
+bot.onText(/\/start/,async (msg) => {
   const chatId = msg.chat.id;
+  const user = msg.from;
+
+  // Save user directly to Firebase RTDB
+  await registerUserToFirebase(user);
   const welcomeText = `
 🎯 Welcome to Friday Bingo! 🎯
 
@@ -55,10 +89,10 @@ Let's play some bingo! 🎊
   bot.sendMessage(chatId, welcomeText);
 });
 
-bot.onText(/\/playgame/, (msg) => {
+bot.onText(/\/playgame/, async (msg) => {
   const chatId = msg.chat.id;
   const user = msg.from;
-  
+  await registerUserToFirebase(user);
   // Register user if new
   if (!users.has(user.id)) {
     users.set(user.id, {
@@ -70,12 +104,13 @@ bot.onText(/\/playgame/, (msg) => {
       createdAt: new Date()
     });
   }
-  
+  const url = `${WEBAPP_URL}?telegramId=${user.id}&username=${user.username || ""}&lang=${user.language_code || "en"}`;
+
   const keyboard = {
     inline_keyboard: [[
       {
         text: '🎮 Play Friday Bingo',
-        web_app: { url: WEBAPP_URL }
+        web_app: { url: url }
       }
     ]]
   };

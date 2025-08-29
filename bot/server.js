@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { ref, get, set } from "firebase/database";
-import { rtdb } from "../src/firebase/config"; // adjust path
+import { rtdb } from "./firebaseConfig.js";   // adjust path
 
 
 dotenv.config();
@@ -245,7 +245,7 @@ bot.on('callback_query', (callbackQuery) => {
       const receiptText = receiptMsg.text;
       let transactionDetails;
       
-      if (receiptText.startsWith('http')) {
+      if (receiptText.startsWith('http')) { 
         transactionDetails = await scrapeTelebirrReceipt(receiptText);
       } else {
         transactionDetails = await parseTelebirrSMS(receiptText);

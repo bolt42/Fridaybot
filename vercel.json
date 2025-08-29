@@ -15,7 +15,10 @@
       "dest": "/bot/server.js"
     },
     {
-      "src": "/(.*)",
+      "handle": "filesystem"
+    },
+    {
+      "src": "/.*",
       "dest": "/index.html"
     }
   ]

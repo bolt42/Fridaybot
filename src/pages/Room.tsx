@@ -133,147 +133,72 @@ const Room: React.FC = () => {
 
   const displayedCard = selectedCard || demoCard;
 
-  return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <button
-          onClick={() => navigate('/')}
-          className="flex items-center space-x-2 text-white hover:text-white/80 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span>Back to Rooms</span>
-        </button>
-        
-        <h1 className="text-2xl font-bold text-white">{currentRoom.name}</h1>
-      </div>
-
-      {/* Room Info */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white/10 backdrop-blur-md rounded-lg border border-white/20 p-4">
-          <div className="flex items-center space-x-2 mb-2">
-            <Coins className="w-5 h-5 text-yellow-400" />
-            <span className="text-white font-medium">{t('bet_amount')}</span>
-          </div>
-          <div className="text-2xl font-bold text-white">
-            {currentRoom.isDemoRoom ? t('free_play') : `${Number(currentRoom.betAmount ?? 0).toFixed(2)}`}
-          </div>
-        </div>
-        
-        <div className="bg-white/10 backdrop-blur-md rounded-lg border border-white/20 p-4">
-          <div className="flex items-center space-x-2 mb-2">
-            <Users className="w-5 h-5 text-blue-400" />
-            <span className="text-white font-medium">{t('players')}</span>
-          </div>
-          <div className="text-2xl font-bold text-white">
-            {currentRoom.currentPlayers}/{currentRoom.maxPlayers}
-          </div>
-        </div>
-        
-        <div className="bg-white/10 backdrop-blur-md rounded-lg border border-white/20 p-4">
-          <div className="flex items-center space-x-2 mb-2">
-            <Trophy className="w-5 h-5 text-green-400" />
-            <span className="text-white font-medium">{t('payout')}</span>
-          </div>
-          <div className="text-2xl font-bold text-white">
-            {currentRoom.isDemoRoom 
-              ? t('free_play') 
-              : `${Number(currentRoom.currentPlayers ?? 0) * Number(currentRoom.betAmount ?? 0) * 0.9 === 0 ? '0.00' : (Number(currentRoom.currentPlayers ?? 0) * Number(currentRoom.betAmount ?? 0) * 0.9).toFixed(2)}`
-            }
-          </div>
-        </div>
-      </div>
-
-      {/* Game Message */}
-      {gameMessage && (
-        <div className="bg-blue-500/20 border border-blue-400/50 rounded-lg p-4 mb-6">
-          <p className="text-white text-center font-medium">{gameMessage}</p>
-        </div>
-      )}
-
-      {/* Countdown */}
-      {countdown > 0 && (
-        <div className="bg-orange-500/20 border border-orange-400/50 rounded-lg p-4 mb-6">
-          <div className="flex items-center justify-center space-x-2 text-white">
-            <Clock className="w-5 h-5" />
-            <span className="font-medium">
-              {t('game_starts_in')} {countdown} {t('seconds')}
-            </span>
-          </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Game Controls */}
-        <div className="space-y-6">
-          {/* Card Selection */}
-          {!hasBet && (
-            <div className="bg-white/10 backdrop-blur-md rounded-lg border border-white/20 p-4">
-              <h3 className="text-white font-medium mb-4">{t('select_card')}</h3>
-              <select
-                onChange={(e) => handleCardSelect(e.target.value)}
-                value={selectedCard?.id || ''}
-                className="w-full bg-white/20 border border-white/30 rounded-lg px-3 py-2 text-white"
-              >
-                <option value="">{t('select_card')}</option>
-                {bingoCards.slice(0, 10).map(card => (
-                  <option key={card.id} value={card.id} disabled={card.claimed}>
-                    {t('card_number')}{card.serialNumber} {card.claimed ? '(Taken)' : ''}
-                  </option>
-                ))}
-              </select>
-              
-              {selectedCard && !hasBet && (
-                <button
-                  onClick={handlePlaceBet}
-                  className="w-full mt-4 bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200"
-                >
-                  {t('place_bet')} {currentRoom.isDemoRoom ? '' : `(${currentRoom.betAmount})`}
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Called Numbers */}
-          <div className="bg-white/10 backdrop-blur-md rounded-lg border border-white/20 p-4">
-            <h3 className="text-white font-medium mb-4">{t('numbers_called')}</h3>
-            <div className="flex flex-wrap gap-2">
-              {displayedCalledNumbers.map(number => (
-                <span
-                  key={number}
-                  className="bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-medium"
-                >
-                  {number}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Bingo Button */}
-          {hasBet && (
-            <button
-              onClick={handleBingoClick}
-              className="w-full bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-bold py-4 px-6 rounded-lg text-xl transition-all duration-200 transform hover:scale-105 shadow-lg"
+return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-800 via-purple-900 to-blue-900 flex flex-col items-center p-4 text-white">
+      
+      {/* Top info row */}
+      <div className="grid grid-cols-6 gap-3 mb-6 w-full max-w-5xl">
+        {["Game EQ7431", "Derash -", "Bonus -", "Players -", "Bet 0", "Call 0"].map(
+          (item, idx) => (
+            <div
+              key={idx}
+              className="bg-white/10 backdrop-blur-md rounded-lg text-center py-3 font-semibold border border-white/20"
             >
-              {t('bingo')}
-            </button>
-          )}
-        </div>
+              {item}
+            </div>
+          )
+        )}
+      </div>
 
-        {/* Bingo Grid */}
-        <div className="lg:col-span-2">
-          <div className="bg-white/10 backdrop-blur-md rounded-lg border border-white/20 p-6">
-            <h3 className="text-white font-medium mb-6 text-center">
-              {t('game_area')} - {t('card_number')}{displayedCard.serialNumber}
-            </h3>
-            <BingoGrid
-              cardNumbers={displayedCard.numbers}
-              calledNumbers={displayedCalledNumbers}
-              onNumberClick={handleNumberClick}
-              markedNumbers={markedNumbers}
-            />
+      {/* Middle section */}
+      <div className="flex flex-col lg:flex-row gap-6 w-full max-w-5xl">
+        
+        {/* Left: Called numbers */}
+        <div className="flex-1 bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20">
+          <h3 className="text-center font-bold mb-3">Called Numbers</h3>
+          <div className="grid grid-cols-5 gap-2">
+            {Array.from({ length: 30 }, (_, i) => i + 1).map((num) => (
+              <div
+                key={num}
+                className="w-10 h-10 flex items-center justify-center rounded-lg bg-white/20 font-bold"
+              >
+                {num}
+              </div>
+            ))}
           </div>
         </div>
+
+        {/* Center: Current call */}
+        <div className="flex flex-col items-center justify-center bg-white/10 backdrop-blur-md p-6 rounded-xl border border-white/20 w-64 mx-auto">
+          <span className="text-lg font-medium mb-2">Current Call</span>
+          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-3xl font-bold shadow-lg">
+            -
+          </div>
+        </div>
+
+        {/* Right: Bingo card */}
+        <div className="flex-1 bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20">
+          <h3 className="text-center font-bold mb-3">Your Card</h3>
+          <BingoGrid
+            cardNumbers={[/* pass numbers here */]}
+            calledNumbers={[]}
+            markedNumbers={[]}
+            onNumberClick={() => {}}
+          />
+        </div>
+      </div>
+
+      {/* Bottom buttons */}
+      <div className="flex gap-4 mt-8 w-full max-w-3xl">
+        <button className="flex-1 bg-gradient-to-r from-orange-500 to-yellow-500 py-4 rounded-xl font-bold text-lg shadow-lg hover:opacity-90 transition">
+          BINGO!
+        </button>
+        <button className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-500 py-4 rounded-xl font-bold text-lg shadow-lg hover:opacity-90 transition">
+          Refresh
+        </button>
+        <button className="flex-1 bg-gradient-to-r from-red-500 to-pink-500 py-4 rounded-xl font-bold text-lg shadow-lg hover:opacity-90 transition">
+          Leave
+        </button>
       </div>
     </div>
   );

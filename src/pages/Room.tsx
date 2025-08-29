@@ -113,9 +113,9 @@ const Room: React.FC = () => {
 
   // Demo called numbers for visualization
   const demoCalledNumbers = [7, 23, 45, 62, 8, 19, 31, 58, 14];
-  const displayedCalledNumbers = currentRoom.calledNumbers.length > 0 
-    ? currentRoom.calledNumbers 
-    : demoCalledNumbers;
+  const displayedCalledNumbers = (currentRoom?.calledNumbers?.length ?? 0) > 0
+  ? currentRoom!.calledNumbers!
+  : demoCalledNumbers;
 
   // Demo card for visualization
   const demoCard = {

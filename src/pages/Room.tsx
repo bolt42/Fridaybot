@@ -13,6 +13,8 @@ const Room: React.FC = () => {
   const { currentRoom, selectedCard, bingoCards, joinRoom, selectCard, placeBet, checkBingo } = useGameStore();
   const { user, updateBalance } = useAuthStore();
   
+  const cardNumbers = Array.from({ length: 25 }, (_, i) => i + 1); // 1–25 grid
+
   const [markedNumbers, setMarkedNumbers] = useState<Set<number>>(new Set());
   const [hasBet, setHasBet] = useState(false);
   const [countdown, setCountdown] = useState(0);

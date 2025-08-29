@@ -1,6 +1,5 @@
-import TelegramBot from "node-telegram-bot-api";
 import { ref, get, set } from "firebase/database";
-import { rtdb } from "../../firebaseConfig.js"; // ✅ adjust relative path
+import { rtdb } from "../firebaseConfig.js"; // adjust path
 
 // ====================== ENV CONFIG ======================
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -10,16 +9,26 @@ const ADMIN_IDS = (process.env.ADMIN_IDS || "")
   .map((id) => parseInt(id.trim()))
   .filter(Boolean);
 
-// 🚨 Create bot WITHOUT polling (for webhook)
-const bot = new TelegramBot(TOKEN, { webHook: true });
-
 // ---- In-memory data (replace with DB for production) ----
 const users = new Map();
 const rooms = new Map();
 const transactions = new Map();
 const withdrawalRequests = new Map();
 
-// ====================== FIREBASE USER REG ======================
+// ====================== UTILS ======================
+async function telegram(method, payload) {
+  const url = `https://api.telegram.org/bot${TOKEN}/${method}`;
+  return fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+async function sendMessage(chatId, text, extra = {}) {
+  return telegram("sendMessage", { chat_id: chatId, text, ...extra });
+}
+
 async function registerUserToFirebase(user) {
   try {
     const userRef = ref(rtdb, "users/" + user.id);
@@ -48,10 +57,10 @@ async function registerUserToFirebase(user) {
   }
 }
 
-// ====================== BOT COMMANDS ======================
-bot.onText(/\/start/, async (msg) => {
-  const chatId = msg.chat.id;
-  const user = msg.from;
+// ====================== COMMAND HANDLERS ======================
+async function handleStart(message) {
+  const chatId = message.chat.id;
+  const user = message.from;
 
   await registerUserToFirebase(user);
 
@@ -60,18 +69,17 @@ bot.onText(/\/start/, async (msg) => {
 
 Available commands:
 /playgame - Launch the bingo mini app
-/deposit - Add funds to your account 
-/withdraw - Withdraw your winnings 
+/deposit - Add funds to your account
+/withdraw - Withdraw your winnings
 
 Let's play some bingo! 🎊
   `;
+  await sendMessage(chatId, welcomeText);
+}
 
-  bot.sendMessage(chatId, welcomeText);
-});
-
-bot.onText(/\/playgame/, async (msg) => {
-  const chatId = msg.chat.id;
-  const user = msg.from;
+async function handlePlayGame(message) {
+  const chatId = message.chat.id;
+  const user = message.from;
 
   await registerUserToFirebase(user);
 
@@ -79,8 +87,6 @@ bot.onText(/\/playgame/, async (msg) => {
     users.set(user.id, {
       id: user.id,
       username: user.username || `user_${user.id}`,
-      firstName: user.first_name || "",
-      lastName: user.last_name || "",
       balance: 50,
       createdAt: new Date(),
     });
@@ -97,17 +103,23 @@ bot.onText(/\/playgame/, async (msg) => {
     ],
   };
 
-  bot.sendMessage(chatId, "🎯 Ready to play Friday Bingo? Tap the button below!", {
+  await sendMessage(chatId, "🎯 Ready to play Friday Bingo? Tap the button below!", {
     reply_markup: keyboard,
   });
-});
+}
 
+// ====================== REFACTORED SEND MESSAGE ======================
+function sendMessage(chatId, text, options = {}) {
+  return bot.sendMessage(chatId, text, options);
+}
+
+// ====================== USER COMMANDS ======================
 bot.onText(/\/deposit/, (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
 
   if (!users.has(userId)) {
-    bot.sendMessage(chatId, "እባክዎ በመጀመሪያ /playgame ይተይቡ።");
+    sendMessage(chatId, "እባክዎ በመጀመሪያ /playgame ይተይቡ።");
     return;
   }
 
@@ -118,7 +130,7 @@ bot.onText(/\/deposit/, (msg) => {
     ],
   };
 
-  bot.sendMessage(chatId, "የክፍያ መንገዱን ይምረጡ:", { reply_markup: keyboard });
+  sendMessage(chatId, "የክፍያ መንገዱን ይምረጡ:", { reply_markup: keyboard });
 });
 
 bot.onText(/\/withdraw/, (msg) => {
@@ -126,12 +138,12 @@ bot.onText(/\/withdraw/, (msg) => {
   const userId = msg.from.id;
 
   if (!users.has(userId)) {
-    bot.sendMessage(chatId, "እባክዎ በመጀመሪያ /playgame ይተይቡ።");
+    sendMessage(chatId, "እባክዎ በመጀመሪያ /playgame ይተይቡ።");
     return;
   }
 
   const user = users.get(userId);
-  bot.sendMessage(
+  sendMessage(
     chatId,
     `💰 የአሁን ሂሳብዎ: ${user.balance} ብር\n\nየሚወጣውን መጠን ይላኩ (ምሳሌ: 100):`
   );
@@ -140,16 +152,16 @@ bot.onText(/\/withdraw/, (msg) => {
     const amount = parseFloat(amountMsg.text);
 
     if (isNaN(amount) || amount <= 0) {
-      bot.sendMessage(chatId, "❌ ትክክለኛ መጠን ያስገቡ።");
+      sendMessage(chatId, "❌ ትክክለኛ መጠን ያስገቡ።");
       return;
     }
 
     if (amount > user.balance) {
-      bot.sendMessage(chatId, "❌ በቂ ሂሳብ የለዎትም።");
+      sendMessage(chatId, "❌ በቂ ሂሳብ የለዎትም።");
       return;
     }
 
-    bot.sendMessage(
+    sendMessage(
       chatId,
       "የመውጫ አካውንት መረጃ ይላኩ (የባንክ ሂሳብ ወይም የቴሌብር ቁጥር):"
     );
@@ -170,7 +182,7 @@ bot.onText(/\/withdraw/, (msg) => {
       user.balance -= amount;
       users.set(userId, user);
 
-      bot.sendMessage(
+      sendMessage(
         chatId,
         "⏳ የማውጫ ጥያቄዎ ተቀበለ። እባክዎ ይጠብቁ፣ ግብይቱ በማስኬድ ላይ ነው።"
       );
@@ -188,7 +200,7 @@ bot.onText(/\/withdraw/, (msg) => {
             ],
           };
 
-          bot.sendMessage(
+          sendMessage(
             adminId,
             `💰 የማውጫ ጥያቄ:\n\n👤 ተጠቃሚ: @${
               user.username || userId
@@ -208,7 +220,7 @@ bot.on("callback_query", (callbackQuery) => {
   const data = callbackQuery.data;
 
   if (data === "deposit_cbe") {
-    bot.sendMessage(
+    sendMessage(
       chatId,
       '📱 CBE Mobile Banking SMS ደረሰኞን ይላኩ:\n\nምሳሌ: "CBE: Transaction successful. Amount: 100.00 ETB. Ref: TXN123456789. Balance: 500.00 ETB. Time: 15:30 12/01/2024"'
     );
@@ -220,11 +232,11 @@ bot.on("callback_query", (callbackQuery) => {
       if (transactionDetails) {
         await processDeposit(userId, transactionDetails, chatId);
       } else {
-        bot.sendMessage(chatId, "❌ ትክክለኛ CBE SMS ያስገቡ።");
+        sendMessage(chatId, "❌ ትክክለኛ CBE SMS ያስገቡ።");
       }
     });
   } else if (data === "deposit_telebirr") {
-    bot.sendMessage(
+    sendMessage(
       chatId,
       '💳 Telebirr SMS ደረሰኞን ወይም የድር አገናኙን ይላኩ:\n\nምሳሌ: "https://telebirr.com/receipt/ABC123" ወይም SMS ደረሰኝ'
     );
@@ -242,7 +254,7 @@ bot.on("callback_query", (callbackQuery) => {
       if (transactionDetails) {
         await processDeposit(userId, transactionDetails, chatId);
       } else {
-        bot.sendMessage(chatId, "❌ ትክክለኛ Telebirr ደረሰኝ ያስገቡ።");
+        sendMessage(chatId, "❌ ትክክለኛ Telebirr ደረሰኝ ያስገቡ።");
       }
     });
   } else if (data.startsWith("complete_withdrawal_")) {
@@ -253,12 +265,12 @@ bot.on("callback_query", (callbackQuery) => {
       request.status = "completed";
       withdrawalRequests.set(requestId, request);
 
-      bot.sendMessage(
+      sendMessage(
         request.userId,
         `✅ የማውጫ ጥያቄዎ ተፈጽሟል!\n\n💵 መጠን: ${request.amount} ብር\n🏦 አካውንት: ${request.account}`
       );
 
-      bot.sendMessage(chatId, `✅ የማውጫ ጥያቄ ${requestId} ተፈጽሟል።`);
+      sendMessage(chatId, `✅ የማውጫ ጥያቄ ${requestId} ተፈጽሟል።`);
     }
   }
 
@@ -269,11 +281,11 @@ bot.on("callback_query", (callbackQuery) => {
 bot.onText(/\/admin_create_room/, (msg) => {
   const userId = msg.from.id;
   if (!ADMIN_IDS.includes(userId)) {
-    bot.sendMessage(msg.chat.id, "❌ You are not authorized.");
+    sendMessage(msg.chat.id, "❌ You are not authorized.");
     return;
   }
 
-  bot.sendMessage(
+  sendMessage(
     msg.chat.id,
     "Send room details in format:\nRoomName,BetAmount,MaxPlayers"
   );
@@ -294,9 +306,9 @@ bot.onText(/\/admin_create_room/, (msg) => {
         createdBy: userId,
       });
 
-      bot.sendMessage(msg.chat.id, `✅ Room "${name}" created successfully!`);
+      sendMessage(msg.chat.id, `✅ Room "${name}" created successfully!`);
     } else {
-      bot.sendMessage(msg.chat.id, "❌ Invalid format. Try again.");
+      sendMessage(msg.chat.id, "❌ Invalid format. Try again.");
     }
   });
 });
@@ -304,7 +316,7 @@ bot.onText(/\/admin_create_room/, (msg) => {
 bot.onText(/\/admin_balance (.+) (.+)/, (msg, match) => {
   const userId = msg.from.id;
   if (!ADMIN_IDS.includes(userId)) {
-    bot.sendMessage(msg.chat.id, "❌ You are not authorized.");
+    sendMessage(msg.chat.id, "❌ You are not authorized.");
     return;
   }
 
@@ -319,76 +331,27 @@ bot.onText(/\/admin_balance (.+) (.+)/, (msg, match) => {
     targetUser.balance += amount;
     users.set(targetUser.id, targetUser);
 
-    bot.sendMessage(
+    sendMessage(
       msg.chat.id,
       `✅ Balance updated for @${username}:\nNew balance: ${targetUser.balance} ETB`
     );
 
-    bot.sendMessage(
+    sendMessage(
       targetUser.id,
       `💰 Your balance has been updated!\nChange: ${
         amount > 0 ? "+" : ""
       }${amount} ETB\nNew balance: ${targetUser.balance} ETB`
     );
   } else {
-    bot.sendMessage(msg.chat.id, `❌ User @${username} not found.`);
+    sendMessage(msg.chat.id, `❌ User @${username} not found.`);
   }
 });
 
 // ====================== UTILS ======================
-async function parseCBESMS(smsText) {
-  const amountMatch = smsText.match(/Amount:\s*(\d+\.?\d*)/i);
-  const refMatch = smsText.match(/Ref:\s*(\w+)/i);
-
-  if (amountMatch && refMatch) {
-    const transactionId = refMatch[1];
-    if (transactions.has(transactionId)) return null;
-
-    return {
-      amount: parseFloat(amountMatch[1]),
-      transactionId,
-      method: "CBE",
-      timestamp: new Date(),
-    };
-  }
-  return null;
-}
-
-async function parseTelebirrSMS(smsText) {
-  const amountMatch = smsText.match(/(\d+\.?\d*)\s*ETB/i);
-  const refMatch = smsText.match(/(TXN\w+|REF\w+|\w{8,})/i);
-
-  if (amountMatch && refMatch) {
-    const transactionId = refMatch[1];
-    if (transactions.has(transactionId)) return null;
-
-    return {
-      amount: parseFloat(amountMatch[1]),
-      transactionId,
-      method: "Telebirr",
-      timestamp: new Date(),
-    };
-  }
-  return null;
-}
-
-async function scrapeTelebirrReceipt(url) {
-  const mockTransactionId = `WEB_${Date.now()}`;
-  const mockAmount = 100;
-  if (transactions.has(mockTransactionId)) return null;
-
-  return {
-    amount: mockAmount,
-    transactionId: mockTransactionId,
-    method: "Telebirr Web",
-    timestamp: new Date(),
-  };
-}
-
 async function processDeposit(userId, transactionDetails, chatId) {
   const user = users.get(userId);
   if (!user) {
-    bot.sendMessage(chatId, "❌ ተጠቃሚ አልተገኘም።");
+    sendMessage(chatId, "❌ ተጠቃሚ አልተገኘም።");
     return;
   }
 
@@ -401,7 +364,7 @@ async function processDeposit(userId, transactionDetails, chatId) {
   user.balance += transactionDetails.amount;
   users.set(userId, user);
 
-  bot.sendMessage(
+  sendMessage(
     chatId,
     `✅ ክፍያዎ በተሳካ ሁኔታ ተቀብሏል!\n\n💵 የገባ መጠን: ${
       transactionDetails.amount
@@ -413,84 +376,44 @@ async function processDeposit(userId, transactionDetails, chatId) {
   );
 }
 
-export default async function handler(req, res) {
-  console.log("🚀 Webhook hit!", req.method, req.url);
 
-  // Set CORS headers
+// ====================== WEBHOOK HANDLER ======================
+export default async function handler(req, res) {
+  console.log("🚀 Webhook hit!", req.method);
+
+  // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  // Handle preflight
-  if (req.method === "OPTIONS") {
-    console.log("⚡ Preflight OPTIONS request received");
-    res.status(200).end();
-    return;
-  }
-
-  if (req.method === "HEAD") {
-    console.log("⚡ HEAD request received");
-    res.status(200).end();
-    return;
-  }
-
-  if (req.method === "GET") {
-    console.log("⚡ Health check GET request");
-    res.status(200).json({ status: "Bot is running", timestamp: new Date().toISOString() });
-    return;
-  }
+  if (req.method === "OPTIONS") return res.status(200).end();
+  if (req.method === "GET")
+    return res.status(200).json({ status: "Bot is running", time: Date.now() });
 
   if (req.method === "POST") {
     try {
-      console.log("📩 Telegram Update Received:", JSON.stringify(req.body, null, 2));
+      const update = req.body;
+      console.log("📩 Telegram update:", JSON.stringify(update, null, 2));
 
-      // Always ACK Telegram immediately
+      // always ACK immediately
       res.status(200).json({ ok: true });
 
-      const update = req.body;
-
-      if (!update) {
-        console.error("❌ No update payload received");
-        return;
-      }
-
       if (update.message) {
-        console.log("💬 Message update:", update.message.text);
-
-        const message = update.message;
-        const text = message.text;
-
-        if (text === "/start") {
-          console.log("👉 Handling /start command");
-          await handleStartCommand(message);
-        } else if (text === "/playgame") {
-          console.log("👉 Handling /playgame command");
-          await handlePlayGameCommand(message);
-        } else {
-          console.log("📝 Received other text:", text);
-        }
-      } else if (update.callback_query) {
-        console.log("👉 Handling callback query");
-        await handleCallbackQuery(update.callback_query);
-      } else {
-        console.log("⚠️ Unknown update type:", update);
+        const text = update.message.text;
+        if (text === "/start") await handleStart(update.message);
+        else if (text === "/playgame") await handlePlayGame(update.message);
+        else await sendMessage(update.message.chat.id, `You said: ${text}`);
       }
 
+      if (update.callback_query) {
+        await sendMessage(update.callback_query.message.chat.id, "Callback received!");
+      }
     } catch (err) {
-      console.error("❌ Error in POST handler:", err);
-      // Don’t fail Telegram – just log error
-      res.status(200).json({ ok: true, error: err.message });
+      console.error("❌ Error in handler:", err);
+      return res.status(200).json({ ok: true });
     }
     return;
   }
 
-  // ❌ Catch any other unexpected methods
-  console.error("🚨 Invalid HTTP method received:", req.method, "URL:", req.url);
-  res.status(405).json({
-    error: "Method Not Allowed",
-    receivedMethod: req.method,
-    expected: "POST from Telegram",
-    hint: "Check vercel.json routing or webhook setup"
-  });
+  res.status(405).json({ error: "Method not allowed" });
 }
-

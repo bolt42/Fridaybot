@@ -7,36 +7,44 @@ import Room from './pages/Room';
 import Header from './components/Header';
 import LoadingSpinner from './components/LoadingSpinner';
 import './firebase/config';
+import { getOrCreateUser } from './services/firebaseApi';
 
 function App() {
   const { user, loading, initializeUser } = useAuthStore();
   const { language } = useLanguageStore();
 
   React.useEffect(() => {
-  if (window.Telegram?.WebApp) {
-    const tg = window.Telegram.WebApp;
-    tg.ready();
+  const initUser = async () => {
+    if (window.Telegram?.WebApp) {
+      const tg = window.Telegram.WebApp;
+      tg.ready();
 
-    console.log("Telegram initDataUnsafe:", tg.initDataUnsafe);
+      console.log("Telegram initDataUnsafe:", tg.initDataUnsafe);
 
-    const user = tg.initDataUnsafe?.user;
-    if (user) {
-      initializeUser({
-        telegramId: user.id.toString(),
-        username: user.username || `${user.first_name || "user"}_${user.id}`,
-        language: "en",
-      });
-      return;
+      const tgUser = tg.initDataUnsafe?.user;
+      if (tgUser) {
+        const userData = await getOrCreateUser({
+          telegramId: tgUser.id.toString(),
+          username: tgUser.username || `${tgUser.first_name || "user"}_${tgUser.id}`,
+          language: "en",
+        });
+
+        initializeUser(userData);
+        return;
+      }
     }
-  }
 
-  // 🚨 If you reach here, it means no Telegram user is passed
-  console.warn("No Telegram user found, using demo mode");
-  initializeUser({
-    telegramId: "demo123",
-    username: "demo_user",
-    language: "en",
-  });
+    // 🚨 fallback demo user
+    console.warn("No Telegram user found, using demo mode");
+    const demoUser = await getOrCreateUser({
+      telegramId: "demo123",
+      username: "demo_user",
+      language: "en",
+    });
+    initializeUser(demoUser);
+  };
+
+  initUser();
 }, [initializeUser]);
 
 

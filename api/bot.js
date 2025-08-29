@@ -108,11 +108,6 @@ async function handlePlayGame(message) {
   });
 }
 
-// ====================== REFACTORED SEND MESSAGE ======================
-function sendMessage(chatId, text, options = {}) {
-  return bot.sendMessage(chatId, text, options);
-}
-
 // ====================== USER COMMANDS ======================
 bot.onText(/\/deposit/, (msg) => {
   const chatId = msg.chat.id;

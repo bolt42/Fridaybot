@@ -22,8 +22,8 @@ interface Room {
   calledNumbers: number[];
   winner?: string;
   payout?: number;
+  players?: { [id: string]: { id: string; username: string; betAmount: number; cardId: string } };
 }
-
 interface GameState {
   rooms: Room[];
   currentRoom: Room | null;
@@ -85,33 +85,44 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
   },
   
- placeBet: async () => {
-    const { currentRoom, selectedCard } = get();
-    if (!currentRoom || !selectedCard) return false;
-    
-    try {
-      // Mark card as claimed
-      const updatedCard = { ...selectedCard, claimed: true };
-      const { bingoCards } = get();
-      const updatedCards = bingoCards.map(c => 
-        c.id === selectedCard.id ? updatedCard : c
-      );
-      
-      set({ 
-        bingoCards: updatedCards,
-        selectedCard: updatedCard
-      });
+placeBet: async () => {
+  const { currentRoom, selectedCard } = get();
+  const { user } = useAuthStore.getState(); // 🔹 get logged-in user
+  if (!currentRoom || !selectedCard || !user) return false;
 
-      // 🔹 also update in RTDB
-      const cardRef = ref(rtdb, 'bingoCards/' + updatedCard.id);
-      await fbset(cardRef, updatedCard);
-      
-      return true;
-    } catch (error) {
-      console.error('Error placing bet:', error);
-      return false;
-    }
-  },
+  try {
+    // Mark card as claimed by the user
+    const updatedCard = { ...selectedCard, claimed: true, claimedBy: user.id };
+    const { bingoCards } = get();
+    const updatedCards = bingoCards.map(c =>
+      c.id === selectedCard.id ? updatedCard : c
+    );
+
+    set({
+      bingoCards: updatedCards,
+      selectedCard: updatedCard,
+    });
+
+    // 🔹 Save card in RTDB
+    const cardRef = ref(rtdb, 'bingoCards/' + updatedCard.id);
+    await fbset(cardRef, updatedCard);
+
+    // 🔹 Add player to room's players list
+    const roomPlayersRef = ref(rtdb, `rooms/${currentRoom.id}/players/${user.id}`);
+    await update(roomPlayersRef, {
+      id: user.id,
+      username: user.username,
+      betAmount: currentRoom.betAmount,
+      cardId: updatedCard.id,
+    });
+
+    return true;
+  } catch (error) {
+    console.error('Error placing bet:', error);
+    return false;
+  }
+},
+
   
   
   checkBingo: async () => {

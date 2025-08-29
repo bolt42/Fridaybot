@@ -129,17 +129,26 @@ const cardNumbers = selectedCard?.numbers ?? [];
  return (
     <div className="min-h-screen bg-gradient-to-br from-purple-800 via-purple-900 to-blue-900 flex flex-col items-center p-2 text-white">
   {/* Header Info */}
+{/* Header Info Dashboard */}
   <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 mb-3 w-full text-xs">
-    {["Game EQ7431", "Derash -", "Bonus -", "Players -", "Bet 0", "Call 0"].map(
-      (item, idx) => (
-        <div
-          key={idx}
-          className="bg-white/10 rounded text-center py-1 border border-white/20"
-        >
-          {item}
-        </div>
-      )
-    )}
+    <div className="bg-white/10 rounded text-center py-1 border border-white/20">
+      Game: {currentRoom.id}
+    </div>
+    <div className="bg-white/10 rounded text-center py-1 border border-white/20">
+      Derash: {Math.floor(currentRoom.currentPlayers * currentRoom.betAmount * 0.9)}
+    </div>
+    <div className="bg-white/10 rounded text-center py-1 border border-white/20">
+      Bonus: 00
+    </div>
+    <div className="bg-white/10 rounded text-center py-1 border border-white/20">
+      Players: {currentRoom.currentPlayers}
+    </div>
+    <div className="bg-white/10 rounded text-center py-1 border border-white/20">
+      Bet: {currentRoom.betAmount}
+    </div>
+    <div className="bg-white/10 rounded text-center py-1 border border-white/20">
+      Call: {currentRoom.calledNumbers.length > 0 ? currentRoom.calledNumbers.at(-1) : "-"}
+    </div>
   </div>
 
   {/* Main content in one row */}
@@ -259,6 +268,35 @@ const cardNumbers = selectedCard?.numbers ?? [];
     </button>
   </div>
 </div>
+{/* Footer: Betted Players */}
+<div className="w-full mt-6 bg-white/10 rounded border border-white/20 p-3">
+  <h3 className="font-bold text-sm mb-2">Players in this room</h3>
+  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+    {currentRoom?.players && Object.values(currentRoom.players).length > 0 ? (
+      Object.values(currentRoom.players).map((player: any) => {
+        // Mask username like bug*** 
+        const maskedUsername = player.username
+          ? `${player.username.slice(0, 3)}***`
+          : `user_${player.id.slice(0, 3)}***`;
+
+        return (
+          <div
+            key={player.id}
+            className="bg-white/20 rounded p-2 flex flex-col items-center text-center"
+          >
+            <span className="font-semibold">{maskedUsername}</span>
+            <span className="text-xs">Bet: {player.betAmount}</span>
+          </div>
+        );
+      })
+    ) : (
+      <div className="col-span-full text-center text-gray-300">
+        No players have bet yet...
+      </div>
+    )}
+  </div>
+</div>
+
   );
 };
 

@@ -413,20 +413,30 @@ async function processDeposit(userId, transactionDetails, chatId) {
   );
 }
 
-// ====================== VERCEL HANDLER ======================
 export default async function handler(req, res) {
   if (req.method === "POST") {
     try {
+      // ✅ Parse raw body if needed
+      let body = req.body;
+      if (!body || typeof body !== "object") {
+        const raw = await new Promise((resolve) => {
+          let data = "";
+          req.on("data", (chunk) => (data += chunk));
+          req.on("end", () => resolve(data));
+        });
+        body = JSON.parse(raw || "{}");
+      }
+
       // Pass Telegram update to the bot
-      await bot.processUpdate(req.body);
+      await bot.processUpdate(body);
 
       return res.status(200).send("OK");
     } catch (err) {
-      console.error("Error processing update:", err);
+      console.error("❌ Error processing update:", err);
       return res.status(500).send("Error");
     }
   }
 
-  // 🚨 Must return 200 for GET, Telegram only calls POST
+  // Telegram only sends POST requests here
   return res.status(405).send("Method Not Allowed");
 }

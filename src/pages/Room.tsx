@@ -15,7 +15,7 @@ const Room: React.FC = () => {
   
   const cardNumbers = Array.from({ length: 25 }, (_, i) => i + 1); // 1–25 grid
 
-  const [markedNumbers, setMarkedNumbers] = useState<Set<number>>(new Set());
+  const [markedNumbers, setMarkedNumbers] = useState<number[]>([]);
   const [hasBet, setHasBet] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [gameMessage, setGameMessage] = useState('');

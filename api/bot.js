@@ -381,7 +381,7 @@ async function processDeposit(userId, transactionDetails, chatId) {
 export default async function handler(req, res) {
   console.log("🚀 Webhook hit!", req.method);
 
-  // CORS
+  // CORS headers
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -395,14 +395,22 @@ export default async function handler(req, res) {
       const update = req.body;
       console.log("📩 Telegram update:", JSON.stringify(update, null, 2));
 
-      // always ACK immediately
+      // Always ACK immediately so Telegram doesn’t retry
       res.status(200).json({ ok: true });
 
       if (update.message) {
         const text = update.message.text;
         if (text === "/start") await handleStart(update.message);
         else if (text === "/playgame") await handlePlayGame(update.message);
-        else await sendMessage(update.message.chat.id, `You said: ${text}`);
+        else if (text === "/deposit") {
+          await sendMessage(update.message.chat.id, "👉 Deposit flow not yet refactored.");
+        }
+        else if (text === "/withdraw") {
+          await sendMessage(update.message.chat.id, "👉 Withdraw flow not yet refactored.");
+        }
+        else {
+          await sendMessage(update.message.chat.id, `You said: ${text}`);
+        }
       }
 
       if (update.callback_query) {
@@ -410,7 +418,7 @@ export default async function handler(req, res) {
       }
     } catch (err) {
       console.error("❌ Error in handler:", err);
-      return res.status(200).json({ ok: true });
+      return res.status(200).json({ ok: true }); // prevent Telegram retries
     }
     return;
   }

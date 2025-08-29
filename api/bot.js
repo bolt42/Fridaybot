@@ -414,36 +414,35 @@ async function processDeposit(userId, transactionDetails, chatId) {
 }
 
 
+// api/bot.js
 export default async function handler(req, res) {
+  console.log("🚀 Webhook hit!", req.method);
+
   if (req.method === "POST") {
     try {
-      // ✅ Parse body
-      let body = req.body;
-      if (!body || typeof body !== "object") {
-        const raw = await new Promise((resolve) => {
-          let data = "";
-          req.on("data", (chunk) => (data += chunk));
-          req.on("end", () => resolve(data));
+      console.log("📩 Update received:", req.body);
+
+      // Always respond quickly to Telegram
+      res.status(200).send("OK");
+
+      // Process asynchronously
+      const { message } = req.body;
+      if (message?.text === "/start") {
+        const chatId = message.chat.id;
+        await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: "Hello! 🚀 Your bot is working on Vercel.",
+          }),
         });
-        body = JSON.parse(raw || "{}");
       }
-
-      console.log("📩 Telegram update received:", JSON.stringify(body, null, 2));
-
-      // Pass Telegram update to the bot
-      await bot.processUpdate(body);
-
-      return res.status(200).send("OK");
     } catch (err) {
-      console.error("❌ Error processing update:", err);
-      return res.status(500).send("Error");
+      console.error("❌ Error handling update:", err);
     }
+  } else {
+    console.log("❌ Wrong method:", req.method);
+    res.status(405).send("Method Not Allowed");
   }
-
-  if (req.method === "GET") {
-    // ✅ Telegram sometimes sends GET to test the webhook
-    return res.status(200).send("Webhook is working ✅");
-  }
-
-  return res.status(405).send("Method Not Allowed");
 }

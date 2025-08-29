@@ -11,7 +11,7 @@ const ADMIN_IDS = (process.env.ADMIN_IDS || "")
   .filter(Boolean);
 
 // 🚨 Create bot WITHOUT polling (for webhook)
-const bot = new TelegramBot(TOKEN);
+const bot = new TelegramBot(TOKEN, { webHook: true });
 
 // ---- In-memory data (replace with DB for production) ----
 const users = new Map();
@@ -417,17 +417,16 @@ async function processDeposit(userId, transactionDetails, chatId) {
 export default async function handler(req, res) {
   if (req.method === "POST") {
     try {
-      await bot.processUpdate(req.body); // ✅ handle Telegram update
+      // Pass Telegram update to the bot
+      await bot.processUpdate(req.body);
+
+      return res.status(200).send("OK");
     } catch (err) {
-      console.error("❌ Bot update error:", err);
+      console.error("Error processing update:", err);
+      return res.status(500).send("Error");
     }
-    return res.status(200).send("ok"); // must return 200 OK
   }
 
-  // For browser / health check
-  if (req.method === "GET") {
-    return res.status(200).send("🤖 Friday Bingo Bot running on Vercel!");
-  }
-
+  // 🚨 Must return 200 for GET, Telegram only calls POST
   return res.status(405).send("Method Not Allowed");
 }

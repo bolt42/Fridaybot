@@ -60,11 +60,11 @@ const translations = {
   },
   am: {
     // Header
-    'friday_bingo': 'ዓርብ ቢንጎ',
+    'friday_bingo': 'Friday Bingo',
     'balance': 'ሂሳብ',
     
     // Landing
-    'welcome': 'ወደ ዓርብ ቢንጎ እንኳን በደህና መጡ!',
+    'welcome': 'ወደ Friday Bingo እንኳን በደህና መጡ!',
     'available_rooms': 'ያሉ ክፍሎች',
     'demo_room': 'ሙከራ ክፍል',
     'free_play': 'ነጻ ጨዋታ',

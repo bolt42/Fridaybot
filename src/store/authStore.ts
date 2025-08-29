@@ -3,106 +3,89 @@ import { rtdb } from '../firebase/config';
 import { ref, get as dbGet, set as dbSet, update as dbUpdate } from 'firebase/database';
 
 interface User {
-  id: string;
+  telegramId: string;
   username: string;
-  firstName: string;
-  lastName: string;
-  balance?: number;
-  createdAt?: Date;
+  balance: number;
+  gamesPlayed: number;
+  gamesWon: number;
+  totalWinnings: number;
+  language: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface AuthState {
   user: User | null;
   loading: boolean;
-  initializeUser: (userData: User) => Promise<void>;
+  initializeUser: (userData: { telegramId: string; username: string; language?: string }) => Promise<void>;
   updateBalance: (amount: number) => Promise<void>;
+  subscribeUser: (telegramId: string) => void;
 }
+
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   loading: true,
-  
-  initializeUser: async (userData: User) => {
+
+  initializeUser: async (userData) => {
     try {
-      // Check if we have a valid Firebase configuration
-      if (!import.meta.env.VITE_FIREBASE_PROJECT_ID || import.meta.env.VITE_FIREBASE_PROJECT_ID === 'demo-project') {
-        // Demo mode - use local storage
-        const demoUser = {
-          ...userData,
-          balance: 50,
-          createdAt: new Date()
-        };
-        set({ user: demoUser, loading: false });
-        return;
-      }
-      
-      const userRef = ref(rtdb, 'users/' + userData.id);
+      const userRef = ref(rtdb, 'users/' + userData.telegramId);
       const userSnap = await dbGet(userRef);
+
       if (userSnap.exists()) {
         const existingUser = userSnap.val();
-        set({
-          user: {
-            ...userData,
-            balance: existingUser.balance,
-            createdAt: existingUser.createdAt ? new Date(existingUser.createdAt) : undefined
-          },
-          loading: false
-        });
+        set({ user: existingUser, loading: false });
       } else {
-        // New user - give 50 balance
-        const newUser = {
-          ...userData,
+        // new user
+        const now = new Date().toISOString();
+        const newUser: User = {
+          telegramId: userData.telegramId,
+          username: userData.username,
           balance: 50,
-          createdAt: new Date().toISOString()
+          gamesPlayed: 0,
+          gamesWon: 0,
+          totalWinnings: 0,
+          language: userData.language ?? 'en',
+          createdAt: now,
+          updatedAt: now,
         };
         await dbSet(userRef, newUser);
-        set({
-          user: {
-            ...newUser,
-            createdAt: new Date(newUser.createdAt)
-          },
-          loading: false
-        });
+        set({ user: newUser, loading: false });
       }
+
+      // start real-time listener
+      get().subscribeUser(userData.telegramId);
+
     } catch (error) {
       console.error('Error initializing user:', error);
-      // Fallback to demo mode if Firebase fails
-      const demoUser = {
-        ...userData,
-        balance: 50,
-        createdAt: new Date()
-      };
-      set({ user: demoUser, loading: false });
+      set({ user: null, loading: false });
     }
   },
-  
+
   updateBalance: async (amount: number) => {
     const { user } = get();
     if (!user) return;
-    
-    // Demo mode - update local state only
-    if (!import.meta.env.VITE_FIREBASE_PROJECT_ID || import.meta.env.VITE_FIREBASE_PROJECT_ID === 'demo-project') {
-      const newBalance = (user.balance || 0) + amount;
-      set({
-        user: { ...user, balance: newBalance }
-      });
-      return;
-    }
-    
+
+    const userRef = ref(rtdb, 'users/' + user.telegramId);
+    const newBalance = (user.balance || 0) + amount;
+    const now = new Date().toISOString();
+
     try {
-      const userRef = ref(rtdb, 'users/' + user.id);
-      const newBalance = (user.balance || 0) + amount;
-      await dbUpdate(userRef, { balance: newBalance });
-      set({
-        user: { ...user, balance: newBalance }
-      });
+      await dbUpdate(userRef, { balance: newBalance, updatedAt: now });
+      set({ user: { ...user, balance: newBalance, updatedAt: now } });
     } catch (error) {
       console.error('Error updating balance:', error);
-      // Fallback to local update
-      const newBalance = (user.balance || 0) + amount;
-      set({
-        user: { ...user, balance: newBalance }
-      });
+      // fallback: update local
+      set({ user: { ...user, balance: newBalance, updatedAt: now } });
     }
-  }
+  },
+
+  subscribeUser: (telegramId: string) => {
+    const userRef = ref(rtdb, 'users/' + telegramId);
+    onValue(userRef, (snapshot) => {
+      if (snapshot.exists()) {
+        set({ user: snapshot.val(), loading: false });
+      }
+    });
+  },
 }));

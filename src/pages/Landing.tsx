@@ -12,47 +12,8 @@ const Landing: React.FC = () => {
     fetchRooms();
   }, [fetchRooms]);
 
-  // Demo rooms for development
-  const demoRooms = [
-    {
-      id: 'demo-room',
-      name: t('demo_room'),
-      betAmount: 0,
-      maxPlayers: 20,
-      currentPlayers: 5,
-      gameStatus: 'waiting',
-      isDemoRoom: true
-    },
-    {
-      id: 'room-1',
-      name: 'Friday Night Special',
-      betAmount: 10,
-      maxPlayers: 15,
-      currentPlayers: 8,
-      gameStatus: 'active',
-      isDemoRoom: false
-    },
-    {
-      id: 'room-2',
-      name: 'Weekend Warriors',
-      betAmount: 25,
-      maxPlayers: 12,
-      currentPlayers: 3,
-      gameStatus: 'waiting',
-      isDemoRoom: false
-    },
-    {
-      id: 'room-3',
-      name: 'High Roller Room',
-      betAmount: 50,
-      maxPlayers: 10,
-      currentPlayers: 6,
-      gameStatus: 'in_progress',
-      isDemoRoom: false
-    }
-  ];
-
-  const displayRooms = rooms.length > 0 ? rooms : demoRooms;
+ 
+  const displayRooms = rooms.length > 0 ;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">

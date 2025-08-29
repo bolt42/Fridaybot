@@ -87,43 +87,57 @@ export const useGameStore = create<GameState>((set, get) => ({
   
 placeBet: async () => {
   const { currentRoom, selectedCard } = get();
-  const { user } = useAuthStore.getState(); // ✅ logged in user
+  const { user } = useAuthStore.getState(); // ✅ logged-in user
 
   if (!currentRoom || !selectedCard || !user) return false;
 
   try {
-    // ✅ Mark card as claimed
+    // ✅ Mark card as claimed locally
     const updatedCard = { ...selectedCard, claimed: true, claimedBy: user.id };
-
-    // update local state
     set({
       selectedCard: updatedCard,
-      bingoCards: get().bingoCards.map(c =>
+      bingoCards: get().bingoCards.map((c) =>
         c.id === updatedCard.id ? updatedCard : c
       ),
     });
 
-    // ✅ Save player’s bet in RTDB
-    const betRef = ref(
-      rtdb,
-      `rooms/${currentRoom.id}/bets/${user.id}`
-    );
-
-    await fbset(betRef, {
+    // ✅ Build bet object
+    const betId = `${currentRoom.id}_${user.id}_${Date.now()}`;
+    const betData = {
+      betId,
       playerId: user.id,
       username: user.username,
       cardId: updatedCard.id,
       roomId: currentRoom.id,
-      gameId: currentRoom.id, // 🔹 if gameId differs, replace with real game id
+      gameId: currentRoom.id, // 🔹 replace with actual gameId if separate
+      betAmount: currentRoom.betAmount,
       timestamp: Date.now(),
+    };
+
+    // ✅ Save bet under room
+    const betRef = ref(rtdb, `rooms/${currentRoom.id}/bets/${user.id}`);
+    await fbset(betRef, betData);
+
+    // ✅ Add player into room’s players list
+    const playerRef = ref(rtdb, `rooms/${currentRoom.id}/players/${user.id}`);
+    await fbset(playerRef, {
+      id: user.id,
+      username: user.username,
+      betAmount: currentRoom.betAmount,
+      cardId: updatedCard.id,
     });
+
+    // ✅ (Optional) Central bets table
+    const globalBetRef = ref(rtdb, `bets/${betId}`);
+    await fbset(globalBetRef, betData);
 
     return true;
   } catch (error) {
-    console.error("Error recording bet:", error);
+    console.error("❌ Error recording bet:", error);
     return false;
   }
 },
+
 
 
   

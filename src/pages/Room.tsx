@@ -147,7 +147,8 @@ const cardNumbers = selectedCard?.numbers ?? [];
       Bet: {currentRoom.betAmount}
     </div>
     <div className="bg-white/10 rounded text-center py-1 border border-white/20">
-      Call: {currentRoom.calledNumbers.length > 0 ? currentRoom.calledNumbers.at(-1) : "-"}
+      Call: {(currentRoom?.calledNumbers?.length ?? 0) > 0 ? currentRoom.calledNumbers!.at(-1) : "-"}
+
     </div>
   </div>
 

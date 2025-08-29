@@ -12,8 +12,6 @@ const Landing: React.FC = () => {
     fetchRooms();
   }, [fetchRooms]);
 
- 
-  const displayRooms = rooms.length > 0 ;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -48,18 +46,19 @@ const Landing: React.FC = () => {
 
       {/* Rooms Section */}
       <div className="mb-8">
-        <h2 className="text-2xl font-bold text-white mb-6 flex items-center space-x-2">
-          <span>{t('available_rooms')}</span>
-          <span className="bg-white/20 text-sm px-2 py-1 rounded-full">
-            {displayRooms.length}
-          </span>
-        </h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {displayRooms.map((room) => (
-            <RoomCard key={room.id} room={room} />
-          ))}
-        </div>
+       <h2 className="text-2xl font-bold text-white mb-6 flex items-center space-x-2">
+  <span>{t('available_rooms')}</span>
+  <span className="bg-white/20 text-sm px-2 py-1 rounded-full">
+    {rooms.length}
+  </span>
+</h2>
+
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+  {rooms.map((room) => (
+    <RoomCard key={room.id} room={room} />
+  ))}
+</div>
+
       </div>
 
       {/* Footer */}

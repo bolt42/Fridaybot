@@ -14,28 +14,26 @@ function App() {
 
   React.useEffect(() => {
     // Initialize user from Telegram WebApp
-    if (window.Telegram?.WebApp) {
-      const tg = window.Telegram.WebApp;
-      tg.ready();
-      
-      const initData = tg.initDataUnsafe;
-      if (initData?.user) {
-        initializeUser({
-          id: initData.user.id.toString(),
-          username: initData.user.username || `user_${initData.user.id}`,
-          firstName: initData.user.first_name || '',
-          lastName: initData.user.last_name || ''
-        });
-      }
-    } else {
-      // Demo mode for testing
+   if (window.Telegram?.WebApp) {
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+
+    const initData = tg.initDataUnsafe;
+    if (initData?.user) {
       initializeUser({
-        id: 'demo123',
-        username: 'demo_user',
-        firstName: 'Demo',
-        lastName: 'User'
+        telegramId: initData.user.id.toString(),
+        username: initData.user.username || `${initData.user.first_name || 'user'}_${initData.user.id}`,
+        language: 'en' // or detect from Telegram if available
       });
     }
+  } else {
+    // Demo mode for local testing
+    initializeUser({
+      telegramId: 'demo123',
+      username: 'demo_user',
+      language: 'en'
+    });
+  }
   }, [initializeUser]);
 
   if (loading) {

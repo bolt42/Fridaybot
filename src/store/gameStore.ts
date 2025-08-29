@@ -55,7 +55,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       set({ rooms });
     });
   },
-  
+   
   joinRoom: (roomId: string) => {
     const { rooms } = get();
     const room = rooms.find(r => r.id === roomId);
@@ -73,8 +73,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       });
       
       // Generate bingo cards
-      const cards = get().generateBingoCards(100);
-      set({ bingoCards: cards });
+       get().fetchBingoCards();
     }
   },
   
@@ -86,7 +85,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
   },
   
-  placeBet: async () => {
+ placeBet: async () => {
     const { currentRoom, selectedCard } = get();
     if (!currentRoom || !selectedCard) return false;
     
@@ -102,6 +101,10 @@ export const useGameStore = create<GameState>((set, get) => ({
         bingoCards: updatedCards,
         selectedCard: updatedCard
       });
+
+      // 🔹 also update in RTDB
+      const cardRef = ref(rtdb, 'bingoCards/' + updatedCard.id);
+      await fbset(cardRef, updatedCard);
       
       return true;
     } catch (error) {
@@ -109,6 +112,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       return false;
     }
   },
+  
   
   checkBingo: async () => {
     const { selectedCard, currentRoom } = get();
@@ -182,23 +186,17 @@ export const useGameStore = create<GameState>((set, get) => ({
   });
 
   return cards;
-}
+},
+fetchBingoCards: () => {
+    const cardsRef = ref(rtdb, 'bingoCards');
+    onValue(cardsRef, (snapshot) => {
+      const data = snapshot.val();
+      const cards: BingoCard[] = data
+        ? Object.entries(data).map(([id, value]: [string, any]) => ({ id, ...value }))
+        : [];
+      set({ bingoCards: cards });
+    });
+  }
 
 }));
 
-function generateRandomNumbers(min: number, max: number, count: number): number[] {
-  const numbers = [];
-  const available = [];
-  
-  for (let i = min; i <= max; i++) {
-    available.push(i);
-  }
-  
-  for (let i = 0; i < count; i++) {
-    const randomIndex = Math.floor(Math.random() * available.length);
-    numbers.push(available[randomIndex]);
-    available.splice(randomIndex, 1);
-  }
-  
-  return numbers;
-}

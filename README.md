@@ -1,168 +1,155 @@
-# Friday Bingo Telegram Mini App
+# Friday Bingo - Telegram Mini App
 
-A comprehensive Telegram bot with a React-based mini app for playing Bingo games with real money betting and payment processing.
+A comprehensive Telegram Bot with Bingo Mini App featuring real-time multiplayer gameplay, payment processing, and admin controls.
 
-## Features
+## 🎯 Features
 
 ### Telegram Bot
 - `/playgame` - Launch the mini app
-- `/deposit` - Deposit money via CBE Bank or Telebirr (Amharic only)
-- `/withdraw` - Request money withdrawal with admin approval (Amharic only)
-- `/balance` - Check current balance
-- Admin commands for room management and user balance adjustments
+- `/deposit` - Add funds via CBE/Telebirr (Amharic flow)
+- `/withdraw` - Withdraw winnings with admin approval (Amharic flow)
+- Admin commands for room and balance management
 
 ### Mini App
-- Bilingual interface (English/Amharic)
-- Real-time gameplay with Firebase
+- Bilingual support (English/Amharic)
+- Real-time multiplayer bingo games
+- Multiple game rooms with different bet amounts
 - Demo room for free play
-- Multiple betting rooms with different stakes
-- Live bingo card generation and number marking
-- Winner validation and automatic payouts
-- Responsive design for all devices
+- Professional UI with smooth animations
+- Balance management and payout system
 
-### Game Logic
-- 100 unique bingo cards per room (B-I-N-G-O format)
-- Minimum 2 players to start a game
-- 30-second countdown before game begins
-- 25 random numbers drawn per game
-- Winner verification with proper bingo pattern checking
-- 90% payout to winner (10% house edge)
+### Game Features
+- 100 unique bingo cards per room
+- Standard B-I-N-G-O format (1-75 numbers)
+- Real-time number calling and marking
+- Automatic winner validation
+- 90% payout to winners
+- Minimum 2 players to start
 
-## Tech Stack
+## 🚀 Setup Instructions
 
-- **Frontend**: React + TypeScript + Tailwind CSS
-- **Backend**: Serverless functions on Vercel
-- **Database**: Firebase Firestore
-- **Bot**: Telegraf.js
-- **Hosting**: Vercel
-- **Real-time**: Firebase real-time listeners
+### 1. Telegram Bot Setup
 
-## Setup Instructions
-
-### 1. Prerequisites
-- Node.js 18+
-- Firebase project
-- Telegram Bot Token
-- Vercel account
+1. Create a new bot via [@BotFather](https://t.me/botfather)
+2. Get your bot token and add it to `.env`
+3. Set bot commands using BotFather:
+   ```
+   playgame - Launch the bingo mini app
+   deposit - Add funds to your account
+   withdraw - Withdraw your winnings
+   ```
 
 ### 2. Firebase Setup
-1. Create a new Firebase project
+
+1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
 2. Enable Firestore Database
-3. Create a service account and download the JSON key
-4. Copy Firebase config to environment variables
+3. Copy configuration to `.env` file
+4. Deploy Firestore rules from `firebase.rules`
 
-### 3. Telegram Bot Setup
-1. Create a bot using @BotFather
-2. Get your bot token
-3. Add admin user IDs to environment variables
+### 3. Local Development
 
-### 4. Environment Variables
-Copy `.env.example` to `.env` and fill in the values:
 ```bash
-cp .env.example .env
-```
-
-### 5. Install Dependencies
-```bash
+# Install dependencies
 npm install
-```
 
-### 6. Development
-```bash
-# Start frontend
+# Copy environment file
+cp .env.example .env
+
+# Start the React app
 npm run dev
 
-# Start bot (in another terminal)
-npm run bot:dev
+# Start the bot server (separate terminal)
+npm run bot
 ```
 
-### 7. Deploy to Vercel
-```bash
-vercel --prod
+### 4. Deployment
+
+#### Vercel Deployment
+1. Connect your GitHub repo to Vercel
+2. Add environment variables in Vercel dashboard
+3. Deploy automatically on push
+
+#### Bot Server
+- Deploy bot server to Railway, Heroku, or VPS
+- Ensure webhook URL is accessible
+- Update `WEBAPP_URL` in environment
+
+## 📱 Usage
+
+### For Players
+1. Start the bot: `/start`
+2. Launch game: `/playgame`
+3. Select a room and place bets
+4. Play bingo and win prizes!
+5. Deposit funds: `/deposit`
+6. Withdraw winnings: `/withdraw`
+
+### For Admins
+- Create rooms: `/admin_create_room`
+- Adjust balances: `/admin_balance username amount`
+- Approve withdrawals via bot notifications
+
+## 🎮 Game Rules
+
+### Bingo Cards
+- 5x5 grid with FREE center space
+- B column: 1-15
+- I column: 16-30
+- N column: 31-45
+- G column: 46-60
+- O column: 61-75
+
+### Winning Patterns
+- Any complete row
+- Any complete column
+- Any diagonal
+
+### Payouts
+- Winner gets 90% of total pot
+- 10% house edge
+- Demo room: Free play, no real money
+
+## 🔧 Technical Stack
+
+- **Frontend**: React + TypeScript + TailwindCSS
+- **State Management**: Zustand
+- **Database**: Firebase Firestore
+- **Bot**: Node.js + node-telegram-bot-api
+- **Hosting**: Vercel (Frontend) + Railway/Heroku (Bot)
+- **Payments**: CBE Banking + Telebirr integration
+
+## 🌐 Environment Variables
+
+```env
+# Firebase
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=
+VITE_FIREBASE_PROJECT_ID=
+VITE_FIREBASE_STORAGE_BUCKET=
+VITE_FIREBASE_MESSAGING_SENDER_ID=
+VITE_FIREBASE_APP_ID=
+
+# Telegram
+TELEGRAM_BOT_TOKEN=
+WEBAPP_URL=
+ADMIN_IDS=
+
+# Server
+PORT=3001
 ```
 
-## Database Schema
+## 📄 License
 
-### Collections:
-- `users` - User profiles and balances
-- `rooms` - Game rooms configuration
-- `games` - Active game states
-- `bingo_cards` - Generated cards for each room
-- `transactions` - Payment history
-- `withdrawal_requests` - Pending withdrawals
+Created by **BOLT4L** - Production-ready Telegram Mini App for Friday Bingo.
 
-## Payment Processing
+## 🆘 Support
 
-### Deposit Flow:
-1. User selects payment method (CBE/Telebirr)
-2. User pastes SMS receipt
-3. Bot parses transaction details
-4. Validates unique transaction ID
-5. Updates user balance automatically
+For issues and support:
+1. Check the console for error messages
+2. Verify Firebase configuration
+3. Ensure bot token is valid
+4. Check network connectivity
 
-### Withdrawal Flow:
-1. User enters withdrawal amount
-2. User provides account details
-3. System locks funds from balance
-4. Admin receives notification with approval buttons
-5. Manual processing and user notification
+---
 
-## Game Rules
-
-### Bingo Cards:
-- B: 1-15 (5 numbers)
-- I: 16-30 (5 numbers)  
-- N: 31-45 (4 numbers + FREE space)
-- G: 46-60 (5 numbers)
-- O: 61-75 (5 numbers)
-
-### Winning Patterns:
-- Horizontal line (any row)
-- Vertical line (any column)
-- Diagonal line (either direction)
-
-### Payout:
-- Winner gets: (Total Players × Room Bet Amount × 0.9)
-- House keeps 10% for operations
-
-## Admin Features
-
-### Room Management:
-- Create/edit rooms
-- Set bet amounts and player limits
-- Activate/deactivate rooms
-- View game statistics
-
-### User Management:
-- View user balances
-- Add/subtract balance manually
-- View transaction history
-- Handle withdrawal approvals
-
-## Mobile App Integration
-
-The app is designed as a Telegram Mini App and works seamlessly within the Telegram interface on all devices.
-
-### Key Features:
-- Native Telegram authentication
-- Responsive design for mobile/tablet/desktop
-- Real-time updates during gameplay
-- Offline-friendly caching
-
-## Security Features
-
-- Transaction ID validation prevents duplicate deposits
-- Admin approval required for all withdrawals
-- Balance validation before allowing bets
-- Secure Firebase rules for data access
-- Rate limiting on bot commands
-
-## Support
-
-Created by **BOLT4L**
-
-For support and setup assistance, contact the development team.
-
-## License
-
-Private project - All rights reserved.
+**Friday Bingo** - Where every Friday is a winning Friday! 🎯

@@ -1,59 +1,35 @@
 import React from 'react';
-import { Globe, Coins } from 'lucide-react';
-import { useApp } from '../contexts/AppContext';
-import { useTranslation } from '../utils/translations';
+import { Zap, Coins } from 'lucide-react';
+import { useAuthStore } from '../store/authStore';
+import { useLanguageStore } from '../store/languageStore';
+import LanguageToggle from './LanguageToggle';
 
 const Header: React.FC = () => {
-  const { user, language, setLanguage } = useApp();
-  const t = useTranslation(language);
-
-  const toggleLanguage = () => {
-    setLanguage(language === 'en' ? 'am' : 'en');
-  };
+  const { user } = useAuthStore();
+  const { t } = useLanguageStore();
 
   return (
-    <header className="bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg">
-      <div className="container mx-auto px-4 py-4">
+    <header className="fixed top-0 left-0 right-0 bg-gradient-to-r from-purple-600 to-blue-600 backdrop-blur-md bg-opacity-90 z-50 border-b border-white/20">
+      <div className="max-w-7xl mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-              <span className="text-blue-600 font-bold text-lg">FB</span>
-            </div>
-            <div>
-              <h1 className="text-xl font-bold">{t.appName}</h1>
-              <p className="text-blue-200 text-sm">{t.createdBy}</p>
-            </div>
+          <div className="flex items-center space-x-2">
+            <Zap className="w-6 h-6 text-yellow-400" />
+            <span className="text-white font-bold text-lg">{t('friday_bingo')}</span>
           </div>
           
           <div className="flex items-center space-x-4">
-            <button
-              onClick={toggleLanguage}
-              className="flex items-center space-x-2 bg-white/10 hover:bg-white/20 rounded-lg px-3 py-2 transition-colors duration-200"
-              aria-label={t.language}
-            >
-              <Globe className="w-4 h-4" />
-              <span className="text-sm font-medium">
-                {language === 'en' ? '🇬🇧' : '🇪🇹'}
-              </span>
-            </button>
+            <LanguageToggle />
             
-            {user && (
-              <div className="flex items-center space-x-3">
-                <div className="text-right">
-                  <p className="text-sm opacity-90">@{user.username}</p>
-                  <div className="flex items-center space-x-1">
-                    <Coins className="w-4 h-4 text-yellow-300" />
-                    <span className="font-semibold">{user.balance.toLocaleString()}</span>
-                    <span className="text-sm opacity-90">{t.birr}</span>
-                  </div>
-                </div>
-                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                  <span className="text-sm font-semibold">
-                    {user.firstName?.charAt(0) || user.username.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-              </div>
-            )}
+            <div className="flex items-center space-x-2 bg-white/10 rounded-lg px-3 py-1.5">
+              <Coins className="w-4 h-4 text-yellow-400" />
+              <span className="text-white font-medium">
+                {user?.balance?.toFixed(2) || '0.00'}
+              </span>
+            </div>
+            
+            <div className="text-white text-sm">
+              <div className="font-medium">{user?.username}</div>
+            </div>
           </div>
         </div>
       </div>

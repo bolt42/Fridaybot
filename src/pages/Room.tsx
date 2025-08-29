@@ -133,7 +133,7 @@ const Room: React.FC = () => {
 
   const displayedCard = selectedCard || demoCard;
 
-return (
+ return (
     <div className="min-h-screen bg-gradient-to-br from-purple-800 via-purple-900 to-blue-900 flex flex-col items-center p-4 text-white">
       
       {/* Top info row */}
@@ -168,8 +168,9 @@ return (
           </div>
         </div>
 
-        {/* Right side: Current call + card */}
-        <div className="flex flex-row gap-6 flex-1 overflow-x-auto">
+        {/* Right side: Current call + card (always row, scrollable if needed) */}
+        <div className="flex flex-row gap-6 flex-1 overflow-x-auto min-w-full">
+          
           {/* Current Call */}
           <div className="flex flex-col items-center justify-center bg-white/10 backdrop-blur-md p-6 rounded-xl border border-white/20 min-w-[200px]">
             <span className="text-lg font-medium mb-2">Current Call</span>
@@ -179,22 +180,34 @@ return (
           </div>
 
           {/* Your Card */}
-          <div className="flex-1 bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20 min-w-[250px]">
+          <div className="flex-1 bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20 min-w-[280px]">
             <div className="flex justify-between items-center mb-3">
               <h3 className="font-bold">Your Card</h3>
-              {/* Card dropdown */}
+              {/* Dropdown */}
               <select className="bg-white/20 text-white rounded px-2 py-1 text-sm outline-none">
                 <option>Card 1</option>
                 <option>Card 2</option>
                 <option>Card 3</option>
               </select>
             </div>
-            <BingoGrid
-              cardNumbers={[/* pass numbers here */]}
-              calledNumbers={[]}
-              markedNumbers={[]}
-              onNumberClick={() => {}}
-            />
+
+            {/* 5x5 Card Grid */}
+            <div className="grid grid-cols-5 gap-2">
+              {cardNumbers.map((num) => {
+                const isMarked = markedNumbers.includes(num);
+                return (
+                  <div
+                    key={num}
+                    onClick={() => handleNumberClick(num)}
+                    className={`w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-lg font-bold cursor-pointer transition
+                      ${isMarked ? "bg-green-500 text-white scale-105" : "bg-white/20 hover:bg-white/30"}
+                    `}
+                  >
+                    {num}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>

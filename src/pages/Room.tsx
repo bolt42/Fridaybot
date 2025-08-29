@@ -48,27 +48,27 @@ const cardNumbers = selectedCard?.numbers ?? [];
   };
 
   const handlePlaceBet = async () => {
-    if (!selectedCard || !currentRoom || !user) return;
-    
-    if (!currentRoom.isDemoRoom && (user.balance || 0) < currentRoom.betAmount) {
-      setGameMessage('Insufficient balance!');
-      return;
+  if (!selectedCard || !currentRoom) return;
+
+  if (!currentRoom.isDemoRoom && (user?.balance || 0) < currentRoom.betAmount) {
+    setGameMessage('Insufficient balance!');
+    return;
+  }
+
+  const success = await placeBet();
+
+  if (success) {
+    setHasBet(true);
+    if (!currentRoom.isDemoRoom) {
+      await updateBalance(-currentRoom.betAmount);
     }
+    setGameMessage('Bet placed! Waiting for other players...');
     
-    const success = await placeBet();
-    if (success) {
-      setHasBet(true);
-      if (!currentRoom.isDemoRoom) {
-        await updateBalance(-currentRoom.betAmount);
-      }
-      setGameMessage('Bet placed! Waiting for other players...');
-      
-      // Simulate countdown start when enough players
-      setTimeout(() => {
-        setCountdown(30);
-      }, 2000);
-    }
-  };
+    setTimeout(() => {
+      setCountdown(30);
+    }, 2000);
+  }
+};
 
   const handleNumberClick = (num: number) => {
     setMarkedNumbers((prev) =>
@@ -265,7 +265,7 @@ const cardNumbers = selectedCard?.numbers ?? [];
           : "bg-blue-600 hover:bg-blue-700 text-white"
       }`}
     >
-      {hasBet ? "Bet Placed" : "Place Bet"}
+      {hasBet ? "Bet Placed" : "Place Bet "}
     </button>
   </div>
 ) : (

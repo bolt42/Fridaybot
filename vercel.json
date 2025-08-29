@@ -10,10 +10,7 @@
     }
   ],
   "routes": [
-    {
-      "src": "/api/bot",
-      "dest": "/api/bot.js"
-    },
+    
     {
       "handle": "filesystem"
     },

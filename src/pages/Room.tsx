@@ -151,19 +151,42 @@ const [selectedCard, setSelectedCard] = useState(1);
   {/* Main content in one row */}
   <div className="flex flex-row gap-2 w-full max-w-full">
     {/* Called Numbers */}
-    <div className="flex-1 bg-white/10 p-2 rounded border border-white/20 max-h-[280px] text-xs overflow-y-auto">
-      <h3 className="text-center font-bold mb-1 text-sm">Called</h3>
-      <div className="grid grid-cols-5 gap-1">
-        {Array.from({ length: 100 }, (_, i) => i + 1).map((num) => (
+    <div className="flex-1 bg-white/10 p-2 rounded border border-white/20 max-h-[400px] text-xs overflow-y-auto">
+  <h3 className="text-center font-bold mb-1 text-sm">Called</h3>
+
+  {/* Bingo Header Row */}
+  <div className="grid grid-cols-5 gap-1 mb-1">
+    {["B", "I", "N", "G", "O"].map((letter) => (
+      <div
+        key={letter}
+        className="w-6 h-6 flex items-center justify-center font-bold text-[12px] bg-purple-600 rounded"
+      >
+        {letter}
+      </div>
+    ))}
+  </div>
+
+  {/* Numbers Grid (5 columns) */}
+  <div className="grid grid-cols-5 gap-1">
+    {[...Array(15)].map((_, rowIdx) =>
+      ["B", "I", "N", "G", "O"].map((col, colIdx) => {
+        const num = rowIdx + 1 + colIdx * 15; // Correct range per column
+        const isCalled = displayedCalledNumbers.includes(num);
+
+        return (
           <div
-            key={num}
-            className="w-6 h-6 flex items-center justify-center rounded bg-white/20 font-bold text-[10px]"
+            key={`${col}-${num}`}
+            className={`w-6 h-6 flex items-center justify-center rounded font-bold text-[10px] transition
+              ${isCalled ? "bg-green-500 text-white scale-105" : "bg-white/20"}
+            `}
           >
             {num}
           </div>
-        ))}
-      </div>
-    </div>
+        );
+      })
+    )}
+  </div>
+</div>
 
     {/* Current Call */}
     <div className="flex flex-col items-center justify-center bg-white/10 p-2 rounded border border-white/20 min-w-[80px]">

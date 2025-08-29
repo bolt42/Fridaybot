@@ -253,6 +253,27 @@ const cardNumbers = selectedCard?.numbers ?? [];
   })}
 </div>
 </div>
+{selectedCard ? (
+  <div className="mt-6">
+    {/* Bet button */}
+    <button
+      onClick={async () => {
+        const success = await placeBet();
+        if (success) {
+          alert("Bet placed successfully!");
+        } else {
+          alert("Failed to place bet. Please select a card first.");
+        }
+      }}
+      className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow"
+    >
+      Place Bet
+    </button>
+  </div>
+) : (
+  <p className="mt-6 text-gray-400">No card selected yet...</p>
+)}
+
 </div>
   </div>
 

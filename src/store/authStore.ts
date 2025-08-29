@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { db } from '../firebase/config';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { rtdb } from '../firebase/config';
+import { ref, get, set, update } from 'firebase/database';
 
 interface User {
   id: string;
@@ -36,16 +36,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return;
       }
       
-      const userRef = doc(db, 'users', userData.id);
-      const userSnap = await getDoc(userRef);
-      
+      const userRef = ref(rtdb, 'users/' + userData.id);
+      const userSnap = await get(userRef);
       if (userSnap.exists()) {
-        const existingUser = userSnap.data();
+        const existingUser = userSnap.val();
         set({
           user: {
             ...userData,
             balance: existingUser.balance,
-            createdAt: existingUser.createdAt?.toDate()
+            createdAt: existingUser.createdAt ? new Date(existingUser.createdAt) : undefined
           },
           loading: false
         });
@@ -54,10 +53,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         const newUser = {
           ...userData,
           balance: 50,
-          createdAt: new Date()
+          createdAt: new Date().toISOString()
         };
-        
-        await setDoc(userRef, newUser);
+        await set(userRef, newUser);
         set({ user: newUser, loading: false });
       }
     } catch (error) {
@@ -86,10 +84,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
     
     try {
-      const userRef = doc(db, 'users', user.id);
+      const userRef = ref(rtdb, 'users/' + user.id);
       const newBalance = (user.balance || 0) + amount;
-      
-      await updateDoc(userRef, { balance: newBalance });
+      await update(userRef, { balance: newBalance });
       set({
         user: { ...user, balance: newBalance }
       });

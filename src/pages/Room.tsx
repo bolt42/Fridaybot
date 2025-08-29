@@ -188,6 +188,7 @@ const cardNumbers = selectedCard?.numbers ?? [];
       <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-lg font-bold shadow">
         -
       </div>
+      <span></span>
     
 
     {/* Your Card */}

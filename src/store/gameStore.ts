@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { rtdb } from '../firebase/config';
-import { ref, onValue, get, set, update } from 'firebase/database';
+import { ref, onValue, get, set as fbset , update } from 'firebase/database';
 
 interface BingoCard {
   id: string;
@@ -144,45 +144,50 @@ export const useGameStore = create<GameState>((set, get) => ({
     return false;
   },
   
-  generateBingoCards: (count: number) => {
-    const cards: BingoCard[] = [];
-    
-    for (let i = 0; i < count; i++) {
-      const card: BingoCard = {
-        id: `card_${i + 1}`,
-        serialNumber: i + 1,
-        claimed: false,
-        numbers: []
-      };
-      
-      // Generate B column (1-15)
-      const bNumbers = generateRandomNumbers(1, 15, 5);
-      // Generate I column (16-30)
-      const iNumbers = generateRandomNumbers(16, 30, 5);
-      // Generate N column (31-45) with free space
-      const nNumbers = generateRandomNumbers(31, 45, 4);
-      // Generate G column (46-60)
-      const gNumbers = generateRandomNumbers(46, 60, 5);
-      // Generate O column (61-75)
-      const oNumbers = generateRandomNumbers(61, 75, 5);
-      
-      // Arrange in rows
-      for (let row = 0; row < 5; row++) {
-        const cardRow = [
-          bNumbers[row],
-          iNumbers[row],
-          row === 2 ? 0 : nNumbers[row > 2 ? row - 1 : row], // Free space in center
-          gNumbers[row],
-          oNumbers[row]
-        ];
-        card.numbers.push(cardRow);
-      }
-      
-      cards.push(card);
+  generateBingoCards: async (count: number) => {
+  const cards: BingoCard[] = [];
+
+  for (let i = 0; i < count; i++) {
+    const card: BingoCard = {
+      id: `card_${Date.now()}_${i + 1}`, // unique ID using timestamp
+      serialNumber: i + 1,
+      claimed: false,
+      numbers: []
+    };
+
+    // Generate B column (1-15)
+    const bNumbers = generateRandomNumbers(1, 15, 5);
+    // Generate I column (16-30)
+    const iNumbers = generateRandomNumbers(16, 30, 5);
+    // Generate N column (31-45) with free space
+    const nNumbers = generateRandomNumbers(31, 45, 4);
+    // Generate G column (46-60)
+    const gNumbers = generateRandomNumbers(46, 60, 5);
+    // Generate O column (61-75)
+    const oNumbers = generateRandomNumbers(61, 75, 5);
+
+    // Arrange in rows
+    for (let row = 0; row < 5; row++) {
+      const cardRow = [
+        bNumbers[row],
+        iNumbers[row],
+        row === 2 ? 0 : nNumbers[row > 2 ? row - 1 : row], // Free space in center
+        gNumbers[row],
+        oNumbers[row]
+      ];
+      card.numbers.push(cardRow);
     }
-    
-    return cards;
+
+    cards.push(card);
+
+    // Save each card to RTDB under "bingoCards/{card.id}"
+    const cardRef = ref(rtdb, 'bingoCards/'+card.id);
+    await fbset(cardRef, card); 
   }
+
+  return cards;
+}
+
 }));
 
 function generateRandomNumbers(min: number, max: number, count: number): number[] {

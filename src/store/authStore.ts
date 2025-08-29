@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { rtdb } from '../firebase/config';
-import { ref, get as dbGet, set as dbSet, update as dbUpdate } from 'firebase/database';
+import { ref, get as dbGet, set as dbSet, update as dbUpdate, onValue } from 'firebase/database';
 
 interface User {
   telegramId: string;

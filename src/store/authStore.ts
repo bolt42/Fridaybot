@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { rtdb } from '../firebase/config';
-import { ref, get, set, update } from 'firebase/database';
+import { ref, get as dbGet, set as dbSet, update as dbUpdate } from 'firebase/database';
 
 interface User {
   id: string;
@@ -37,7 +37,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
       
       const userRef = ref(rtdb, 'users/' + userData.id);
-      const userSnap = await get(userRef);
+      const userSnap = await dbGet(userRef);
       if (userSnap.exists()) {
         const existingUser = userSnap.val();
         set({
@@ -55,8 +55,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           balance: 50,
           createdAt: new Date().toISOString()
         };
-        await set(userRef, newUser);
-        set({ user: newUser, loading: false });
+        await dbSet(userRef, newUser);
+        set({
+          user: {
+            ...newUser,
+            createdAt: new Date(newUser.createdAt)
+          },
+          loading: false
+        });
       }
     } catch (error) {
       console.error('Error initializing user:', error);
@@ -86,7 +92,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const userRef = ref(rtdb, 'users/' + user.id);
       const newBalance = (user.balance || 0) + amount;
-      await update(userRef, { balance: newBalance });
+      await dbUpdate(userRef, { balance: newBalance });
       set({
         user: { ...user, balance: newBalance }
       });

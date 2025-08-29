@@ -10,11 +10,10 @@ const Room: React.FC = () => {
   const { roomId } = useParams();
   const navigate = useNavigate();
   const { t } = useLanguageStore();
-  const { currentRoom, selectedCard, bingoCards, joinRoom, selectCard, placeBet, checkBingo } = useGameStore();
+  const { currentRoom, bingoCards, joinRoom, selectCard, placeBet, checkBingo } = useGameStore();
   const { user, updateBalance } = useAuthStore();
   
-  const cardNumbers = Array.from({ length: 25 }, (_, i) => i + 1); // 1–25 grid
-
+const [selectedCard, setSelectedCard] = useState(1);
   const [markedNumbers, setMarkedNumbers] = useState<number[]>([]);
   const [hasBet, setHasBet] = useState(false);
   const [countdown, setCountdown] = useState(0);
@@ -25,7 +24,13 @@ const Room: React.FC = () => {
       joinRoom(roomId);
     }
   }, [roomId, joinRoom]);
+  const generateCard = () => {
+    const nums = Array.from({ length: 100 }, (_, i) => i + 1);
+    return nums.sort(() => Math.random() - 0.5).slice(0, 25);
+  };
 
+  const cards = [generateCard(), generateCard(), generateCard()];
+  const cardNumbers = cards[selectedCard - 1];
   React.useEffect(() => {
     if (currentRoom?.gameStatus === 'countdown' && countdown > 0) {
       const timer = setInterval(() => {
@@ -71,18 +76,10 @@ const Room: React.FC = () => {
     }
   };
 
-  const handleNumberClick = (number: number) => {
-    if (!currentRoom?.calledNumbers.includes(number)) return;
-    
-    setMarkedNumbers(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(number)) {
-        newSet.delete(number);
-      } else {
-        newSet.add(number);
-      }
-      return newSet;
-    });
+  const handleNumberClick = (num: number) => {
+    setMarkedNumbers((prev) =>
+      prev.includes(num) ? prev.filter((n) => n !== num) : [...prev, num]
+    );
   };
 
   const handleBingoClick = async () => {
@@ -136,15 +133,14 @@ const Room: React.FC = () => {
   const displayedCard = selectedCard || demoCard;
 
  return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-800 via-purple-900 to-blue-900 flex flex-col items-center p-4 text-white">
-      
-      {/* Top info row */}
-      <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 mb-6 w-full max-w-5xl">
+    <div className="min-h-screen bg-gradient-to-br from-purple-800 via-purple-900 to-blue-900 flex flex-col items-center p-2 text-white">
+      {/* Header Info */}
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 mb-3 w-full text-xs">
         {["Game EQ7431", "Derash -", "Bonus -", "Players -", "Bet 0", "Call 0"].map(
           (item, idx) => (
             <div
               key={idx}
-              className="bg-white/10 backdrop-blur-md rounded-lg text-center py-3 font-semibold border border-white/20"
+              className="bg-white/10 rounded text-center py-1 border border-white/20"
             >
               {item}
             </div>
@@ -152,17 +148,16 @@ const Room: React.FC = () => {
         )}
       </div>
 
-      {/* Middle section */}
-      <div className="flex flex-col lg:flex-row gap-6 w-full max-w-5xl">
-        
-        {/* Left: Called numbers */}
-        <div className="flex-1 bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20 overflow-y-auto max-h-[400px]">
-          <h3 className="text-center font-bold mb-3">Called Numbers</h3>
-          <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
+      {/* Main content in one row */}
+      <div className="flex flex-row gap-2 w-full max-w-full overflow-x-auto">
+        {/* Called Numbers */}
+        <div className="flex-1 bg-white/10 p-2 rounded border border-white/20 max-h-[280px] text-xs">
+          <h3 className="text-center font-bold mb-1 text-sm">Called</h3>
+          <div className="grid grid-cols-5 gap-1">
             {Array.from({ length: 100 }, (_, i) => i + 1).map((num) => (
               <div
                 key={num}
-                className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg bg-white/20 font-bold text-xs sm:text-sm"
+                className="w-6 h-6 flex items-center justify-center rounded bg-white/20 font-bold text-[10px]"
               >
                 {num}
               </div>
@@ -170,59 +165,56 @@ const Room: React.FC = () => {
           </div>
         </div>
 
-        {/* Right side: Current call + card (always row, scrollable if needed) */}
-        <div className="flex flex-row gap-6 flex-1 overflow-x-auto min-w-full">
-          
-          {/* Current Call */}
-          <div className="flex flex-col items-center justify-center bg-white/10 backdrop-blur-md p-6 rounded-xl border border-white/20 min-w-[200px]">
-            <span className="text-lg font-medium mb-2">Current Call</span>
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-3xl font-bold shadow-lg">
-              -
-            </div>
+        {/* Current Call */}
+        <div className="flex flex-col items-center justify-center bg-white/10 p-2 rounded border border-white/20 min-w-[80px]">
+          <span className="text-[10px] mb-1">Current</span>
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-lg font-bold shadow">
+            -
           </div>
+        </div>
 
-          {/* Your Card */}
-          <div className="flex-1 bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20 min-w-[280px]">
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="font-bold">Your Card</h3>
-              {/* Dropdown */}
-              <select className="bg-white/20 text-white rounded px-2 py-1 text-sm outline-none">
-                <option>Card 1</option>
-                <option>Card 2</option>
-                <option>Card 3</option>
-              </select>
-            </div>
-
-            {/* 5x5 Card Grid */}
-            <div className="grid grid-cols-5 gap-2">
-              {cardNumbers.map((num) => {
-                const isMarked = markedNumbers.includes(num);
-                return (
-                  <div
-                    key={num}
-                    onClick={() => handleNumberClick(num)}
-                    className={`w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-lg font-bold cursor-pointer transition
-                      ${isMarked ? "bg-green-500 text-white scale-105" : "bg-white/20 hover:bg-white/30"}
-                    `}
-                  >
-                    {num}
-                  </div>
-                );
-              })}
-            </div>
+        {/* Your Card */}
+        <div className="flex-1 bg-white/10 p-2 rounded border border-white/20 text-xs">
+          <div className="flex justify-between items-center mb-1">
+            <h3 className="font-bold text-sm">Your Card</h3>
+            <select
+              value={selectedCard}
+              onChange={(e) => setSelectedCard(Number(e.target.value))}
+              className="bg-white/20 text-white rounded px-1 py-0.5 text-[10px]"
+            >
+              <option value={1}>Card 1</option>
+              <option value={2}>Card 2</option>
+              <option value={3}>Card 3</option>
+            </select>
+          </div>
+          <div className="grid grid-cols-5 gap-1">
+            {cardNumbers.map((num) => {
+              const isMarked = markedNumbers.includes(num);
+              return (
+                <div
+                  key={num}
+                  onClick={() => handleNumberClick(num)}
+                  className={`w-8 h-8 flex items-center justify-center rounded font-bold text-[11px] cursor-pointer transition
+                    ${isMarked ? "bg-green-500 text-white scale-105" : "bg-white/20 hover:bg-white/30"}
+                  `}
+                >
+                  {num}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
 
       {/* Bottom buttons */}
-      <div className="flex flex-col sm:flex-row gap-4 mt-8 w-full max-w-3xl">
-        <button className="flex-1 bg-gradient-to-r from-orange-500 to-yellow-500 py-4 rounded-xl font-bold text-lg shadow-lg hover:opacity-90 transition">
+      <div className="flex flex-row gap-2 mt-3 w-full">
+        <button className="flex-1 bg-gradient-to-r from-orange-500 to-yellow-500 py-2 rounded font-bold text-sm shadow hover:opacity-90 transition">
           BINGO!
         </button>
-        <button className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-500 py-4 rounded-xl font-bold text-lg shadow-lg hover:opacity-90 transition">
+        <button className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-500 py-2 rounded font-bold text-sm shadow hover:opacity-90 transition">
           Refresh
         </button>
-        <button className="flex-1 bg-gradient-to-r from-red-500 to-pink-500 py-4 rounded-xl font-bold text-lg shadow-lg hover:opacity-90 transition">
+        <button className="flex-1 bg-gradient-to-r from-red-500 to-pink-500 py-2 rounded font-bold text-sm shadow hover:opacity-90 transition">
           Leave
         </button>
       </div>

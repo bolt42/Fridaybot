@@ -134,92 +134,91 @@ const [selectedCard, setSelectedCard] = useState(1);
 
  return (
     <div className="min-h-screen bg-gradient-to-br from-purple-800 via-purple-900 to-blue-900 flex flex-col items-center p-2 text-white">
-      {/* Header Info */}
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 mb-3 w-full text-xs">
-        {["Game EQ7431", "Derash -", "Bonus -", "Players -", "Bet 0", "Call 0"].map(
-          (item, idx) => (
-            <div
-              key={idx}
-              className="bg-white/10 rounded text-center py-1 border border-white/20"
-            >
-              {item}
-            </div>
-          )
-        )}
-      </div>
-
-      {/* Main content in one row */}
-      <div className="flex flex-row gap-2 w-full max-w-full overflow-x-auto">
-        {/* Called Numbers */}
-        <div className="flex-1 bg-white/10 p-2 rounded border border-white/20 max-h-[280px] text-xs">
-          <h3 className="text-center font-bold mb-1 text-sm">Called</h3>
-          <div className="grid grid-cols-5 gap-1">
-            {Array.from({ length: 100 }, (_, i) => i + 1).map((num) => (
-              <div
-                key={num}
-                className="w-6 h-6 flex items-center justify-center rounded bg-white/20 font-bold text-[10px]"
-              >
-                {num}
-              </div>
-            ))}
-          </div>
+  {/* Header Info */}
+  <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 mb-3 w-full text-xs">
+    {["Game EQ7431", "Derash -", "Bonus -", "Players -", "Bet 0", "Call 0"].map(
+      (item, idx) => (
+        <div
+          key={idx}
+          className="bg-white/10 rounded text-center py-1 border border-white/20"
+        >
+          {item}
         </div>
+      )
+    )}
+  </div>
 
-        {/* Current Call */}
-        <div className="flex flex-col items-center justify-center bg-white/10 p-2 rounded border border-white/20 min-w-[80px]">
-          <span className="text-[10px] mb-1">Current</span>
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-lg font-bold shadow">
-            -
+  {/* Main content in one row */}
+  <div className="flex flex-row gap-2 w-full max-w-full">
+    {/* Called Numbers */}
+    <div className="flex-1 bg-white/10 p-2 rounded border border-white/20 max-h-[280px] text-xs overflow-y-auto">
+      <h3 className="text-center font-bold mb-1 text-sm">Called</h3>
+      <div className="grid grid-cols-5 gap-1">
+        {Array.from({ length: 100 }, (_, i) => i + 1).map((num) => (
+          <div
+            key={num}
+            className="w-6 h-6 flex items-center justify-center rounded bg-white/20 font-bold text-[10px]"
+          >
+            {num}
           </div>
-        
-
-        {/* Your Card */}
-        <div className="flex-1 bg-white/10 p-2 rounded border border-white/20 text-xs">
-          <div className="flex justify-between items-center mb-1">
-            <h3 className="font-bold text-sm">Your Card</h3>
-            <select
-              value={selectedCard}
-              onChange={(e) => setSelectedCard(Number(e.target.value))}
-              className="bg-white/20 text-white rounded px-1 py-0.5 text-[10px]"
-            >
-              <option value={1}>Card 1</option>
-              <option value={2}>Card 2</option>
-              <option value={3}>Card 3</option>
-            </select>
-          </div>
-          <div className="grid grid-cols-5 gap-1">
-            {cardNumbers.map((num) => {
-              const isMarked = markedNumbers.includes(num);
-              return (
-                <div
-                  key={num}
-                  onClick={() => handleNumberClick(num)}
-                  className={`w-8 h-8 flex items-center justify-center rounded font-bold text-[11px] cursor-pointer transition
-                    ${isMarked ? "bg-green-500 text-white scale-105" : "bg-white/20 hover:bg-white/30"}
-                  `}
-                >
-                  {num}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        </div>
-      </div>
-
-      {/* Bottom buttons */}
-      <div className="flex flex-row gap-2 mt-3 w-full">
-        <button className="flex-1 bg-gradient-to-r from-orange-500 to-yellow-500 py-2 rounded font-bold text-sm shadow hover:opacity-90 transition">
-          BINGO!
-        </button>
-        <button className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-500 py-2 rounded font-bold text-sm shadow hover:opacity-90 transition">
-          Refresh
-        </button>
-        <button className="flex-1 bg-gradient-to-r from-red-500 to-pink-500 py-2 rounded font-bold text-sm shadow hover:opacity-90 transition">
-          Leave
-        </button>
+        ))}
       </div>
     </div>
+
+    {/* Current Call */}
+    <div className="flex flex-col items-center justify-center bg-white/10 p-2 rounded border border-white/20 min-w-[80px]">
+      <span className="text-[10px] mb-1">Current</span>
+      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-lg font-bold shadow">
+        -
+      </div>
+    </div>
+
+    {/* Your Card */}
+    <div className="flex-1 bg-white/10 p-2 rounded border border-white/20 text-xs">
+      <div className="flex justify-between items-center mb-1">
+        <h3 className="font-bold text-sm">Your Card</h3>
+        <select
+          value={selectedCard}
+          onChange={(e) => setSelectedCard(Number(e.target.value))}
+          className="bg-white/20 text-white rounded px-1 py-0.5 text-[10px]"
+        >
+          <option value={1}>Card 1</option>
+          <option value={2}>Card 2</option>
+          <option value={3}>Card 3</option>
+        </select>
+      </div>
+      <div className="grid grid-cols-5 gap-1">
+        {cardNumbers.map((num) => {
+          const isMarked = markedNumbers.includes(num);
+          return (
+            <div
+              key={num}
+              onClick={() => handleNumberClick(num)}
+              className={`w-8 h-8 flex items-center justify-center rounded font-bold text-[11px] cursor-pointer transition
+                ${isMarked ? "bg-green-500 text-white scale-105" : "bg-white/20 hover:bg-white/30"}
+              `}
+            >
+              {num}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  </div>
+
+  {/* Bottom buttons */}
+  <div className="flex flex-row gap-2 mt-3 w-full">
+    <button className="flex-1 bg-gradient-to-r from-orange-500 to-yellow-500 py-2 rounded font-bold text-sm shadow hover:opacity-90 transition">
+      BINGO!
+    </button>
+    <button className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-500 py-2 rounded font-bold text-sm shadow hover:opacity-90 transition">
+      Refresh
+    </button>
+    <button className="flex-1 bg-gradient-to-r from-red-500 to-pink-500 py-2 rounded font-bold text-sm shadow hover:opacity-90 transition">
+      Leave
+    </button>
+  </div>
+</div>
   );
 };
 

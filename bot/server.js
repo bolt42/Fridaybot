@@ -80,8 +80,8 @@ bot.onText(/\/start/,async (msg) => {
 
 Available commands:
 /playgame - Launch the bingo mini app
-/deposit - Add funds to your account (Amharic)
-/withdraw - Withdraw your winnings (Amharic)
+/deposit - Add funds to your account 
+/withdraw - Withdraw your winnings 
 
 Let's play some bingo! 🎊
   `;

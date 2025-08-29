@@ -5,6 +5,7 @@ import { getAuth } from 'firebase/auth';
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyBRxd0gLACHrmQ5Jk0RkaY-tjYz9LhKx7g",
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "jackpot-fd988.firebaseapp.com",
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || "https://jackpot-fd988-default-rtdb.firebaseio.com",
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "jackpot-fd988",
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "jackpot-fd988.appspot.com",
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "859370808626",

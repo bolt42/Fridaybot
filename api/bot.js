@@ -413,10 +413,11 @@ async function processDeposit(userId, transactionDetails, chatId) {
   );
 }
 
+
 export default async function handler(req, res) {
   if (req.method === "POST") {
     try {
-      // ✅ Parse raw body if needed
+      // ✅ Parse body
       let body = req.body;
       if (!body || typeof body !== "object") {
         const raw = await new Promise((resolve) => {
@@ -426,6 +427,8 @@ export default async function handler(req, res) {
         });
         body = JSON.parse(raw || "{}");
       }
+
+      console.log("📩 Telegram update received:", JSON.stringify(body, null, 2));
 
       // Pass Telegram update to the bot
       await bot.processUpdate(body);
@@ -437,6 +440,10 @@ export default async function handler(req, res) {
     }
   }
 
-  // Telegram only sends POST requests here
+  if (req.method === "GET") {
+    // ✅ Telegram sometimes sends GET to test the webhook
+    return res.status(200).send("Webhook is working ✅");
+  }
+
   return res.status(405).send("Method Not Allowed");
 }

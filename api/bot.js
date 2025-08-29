@@ -19,12 +19,20 @@ const pendingActions = new Map(); // <-- track "next step" for users
 // ====================== TELEGRAM HELPERS ======================
 async function telegram(method, payload) {
   const url = `https://api.telegram.org/bot${TOKEN}/${method}`;
-  return fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!data.ok) console.error("❌ Telegram API error:", data);
+    return data;
+  } catch (err) {
+    console.error("❌ Fetch error:", err);
+  }
 }
+
 
 async function sendMessage(chatId, text, extra = {}) {
   return telegram("sendMessage", { chat_id: chatId, text, ...extra });
@@ -297,25 +305,24 @@ export default async function handler(req, res) {
     return res.status(200).json({ status: "Bot is running", time: Date.now() });
 
   if (req.method === "POST") {
-    try {
-      const update = req.body;
-      console.log("📩 Telegram update:", JSON.stringify(update, null, 2));
+  try {
+    const update = req.body;
+    console.log("📩 Telegram update:", JSON.stringify(update, null, 2));
 
-      // ACK immediately
-      res.status(200).json({ ok: true });
-
-      if (update.message) {
-        await handleUserMessage(update.message);
-      }
-      if (update.callback_query) {
-        await handleCallback(update.callback_query);
-      }
-    } catch (err) {
-      console.error("❌ Error in handler:", err);
-      return res.status(200).json({ ok: true }); // avoid retries
+    if (update.message) {
+      await handleUserMessage(update.message);
     }
-    return;
+    if (update.callback_query) {
+      await handleCallback(update.callback_query);
+    }
+
+    return res.status(200).json({ ok: true }); // respond AFTER processing
+  } catch (err) {
+    console.error("❌ Error in handler:", err);
+    return res.status(200).json({ ok: true }); // still ACK to Telegram
   }
+}
+
 
   res.status(405).json({ error: "Method not allowed" });
 }

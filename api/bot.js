@@ -89,20 +89,14 @@ Let's play some bingo! 🎊
   `;
   await sendMessage(chatId, welcomeText);
 }
-function signUserId(userId) {
-  const secret = process.env.TELEGRAM_BOT_TOKEN; // your bot token
-  return crypto
-    .createHmac("sha256", secret)
-    .update(userId.toString())
-    .digest("hex");
-}
+
 async function handlePlayGame(message) {
   const chatId = message.chat.id;
   const user = message.from;
 
   await registerUserToFirebase(user);
 
-  const signature = signUserId(user.id);
+  const signature = await fetch(`/api/signuser?id=${user.id}`);
   const userUrl = `https://fridaybots.vercel.app/?id=${user.id}&sig=${signature}`;
   const keyboard = {
     inline_keyboard: [

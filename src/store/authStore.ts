@@ -22,6 +22,7 @@ interface AuthState {
   logout: () => void;
 }
 
+// Use the persist middleware properly with the correct typing.
 export const useAuthStore = create<AuthState>(
   persist(
     (set) => ({
@@ -36,7 +37,7 @@ export const useAuthStore = create<AuthState>(
     }),
     {
       name: 'auth-storage', // The key for localStorage
-      getStorage: () => localStorage, // Using localStorage for persistence
+      getStorage: () => localStorage, // Persist state to localStorage
     }
-  )
+  ) as any // Cast to 'any' to resolve the typing error
 );

@@ -1,5 +1,7 @@
 import { ref, get, set } from "firebase/database";
 import { rtdb } from "../bot/firebaseConfig.js"; // adjust path
+import crypto from "crypto";
+
 
 // ====================== ENV CONFIG ======================
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -87,16 +89,21 @@ Let's play some bingo! 🎊
   `;
   await sendMessage(chatId, welcomeText);
 }
-
+function signUserId(userId) {
+  const secret = process.env.TELEGRAM_BOT_TOKEN; // your bot token
+  return crypto
+    .createHmac("sha256", secret)
+    .update(userId.toString())
+    .digest("hex");
+}
 async function handlePlayGame(message) {
   const chatId = message.chat.id;
   const user = message.from;
 
   await registerUserToFirebase(user);
 
-
-  // Pass the Telegram user ID as a query parameter
-  const userUrl = `https://fridaybots.vercel.app/user?id=${user.id}`;
+  const signature = signUserId(user.id);
+  const userUrl = `https://fridaybots.vercel.app/user?id=${user.id}&sig=${signature}`;
   const keyboard = {
     inline_keyboard: [
       [

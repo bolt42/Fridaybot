@@ -4,52 +4,51 @@ import { useAuthStore } from './store/authStore';
 import { useLanguageStore } from './store/languageStore';
 import Landing from './pages/Landing';
 import Room from './pages/Room';
-import User from './pages/User';
 import Header from './components/Header';
 import LoadingSpinner from './components/LoadingSpinner';
 import './firebase/config';
 import { getOrCreateUser } from './services/firebaseApi';
+import { useSearchParams } from "react-router-dom";
 
 function App() {
   const { user, loading, initializeUser } = useAuthStore();
   const { language } = useLanguageStore();
+  const [searchParams] = useSearchParams();
 
   React.useEffect(() => {
-  const initUser = async () => {
-    if (window.Telegram?.WebApp) {
-     
+    const initUser = async () => {
+      const userId = searchParams.get("id");
+      const sig = searchParams.get("sig");
 
-  const tg: any = window.Telegram.WebApp;
-  tg.ready();
+      if (userId && sig) {
+        // ✅ Ask your backend to verify
+        const res = await fetch(`/api/verifyUser?id=${userId}&sig=${sig}`);
+        const data = await res.json();
 
-console.log("initData:", tg.initData);
-console.log("initDataUnsafe:", tg.initDataUnsafe);
-      
-      const tgUser = tg.initDataUnsafe?.user;
-      if (tgUser) {
-        const userData = await getOrCreateUser({
-          telegramId: tgUser.id.toString(),
-          username: tgUser.username || `${tgUser.first_name || "user"}_${tgUser.id}`,
-          language: "en",
-        });
-
-        initializeUser(userData);
-        return;
+        if (data.valid) {
+          const userData = await getOrCreateUser({
+            telegramId: userId,
+            username: `user_${userId}`,
+            language: "en",
+          });
+          initializeUser(userData);
+          return;
+        } else {
+          console.error("❌ Invalid signature. Possible spoof attempt!");
+        }
       }
-    }
 
-    // 🚨 fallback demo user
-    console.warn("No Telegram user found, using demo mode");
-    const demoUser = await getOrCreateUser({
-      telegramId: "demo123",
-      username: "demo_user",
-      language: "en",
-    });
-    initializeUser(demoUser);
-  };
+      // fallback demo user
+      const demoUser = await getOrCreateUser({
+        telegramId: "demo123",
+        username: "demo_user",
+        language: "en",
+      });
+      initializeUser(demoUser);
+    };
 
-  initUser();
-}, [initializeUser]);
+    initUser();
+  }, [initializeUser, searchParams]);
 
 
   if (loading) {
@@ -64,7 +63,6 @@ console.log("initDataUnsafe:", tg.initDataUnsafe);
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/room/:roomId" element={<Room />} />
-            <Route path="/user" element={<User />} />
           </Routes>
         </main>
       </Router>

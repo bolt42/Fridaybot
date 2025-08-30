@@ -1,13 +1,18 @@
 import crypto from "crypto";
 
 export default function handler(req, res) {
-  const { userId } = req.query;
+  const { id, sig } = req.query;
   const secret = process.env.TELEGRAM_BOT_TOKEN;
 
-  const signature = crypto
+  if (!secret) {
+    console.error("❌ TELEGRAM_BOT_TOKEN is not set in environment!");
+    return res.status(500).json({ error: "Server misconfiguration" });
+  }
+
+  const expectedSig = crypto
     .createHmac("sha256", secret)
-    .update(userId.toString())
+    .update(id.toString())
     .digest("hex");
 
-  res.json({ sig: signature });
+  res.json({ valid: sig === expectedSig });
 }

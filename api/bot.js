@@ -96,8 +96,15 @@ async function handlePlayGame(message) {
 
   await registerUserToFirebase(user);
 
-  const signature = await fetch(`/api/signuser?id=${user.id}`);
-  const userUrl = `https://fridaybots.vercel.app/?id=${user.id}&sig=${signature}`;
+  const baseUrl = process.env.VERCEL_URL
+  ? `https://${process.env.VERCEL_URL}`
+  : "http://localhost:3000"; // fallback for local dev
+
+const sigRes = await fetch(`${baseUrl}/api/signuser?id=${user.id}`);
+const { sig } = await sigRes.json();
+
+const userUrl = `${WEBAPP_URL}/?id=${user.id}&sig=${sig}`;
+
   const keyboard = {
     inline_keyboard: [
       [

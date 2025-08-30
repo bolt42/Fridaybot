@@ -103,7 +103,7 @@ async function handlePlayGame(message) {
   await registerUserToFirebase(user);
 
   const signature = signUserId(user.id);
-  const userUrl = `https://fridaybots.vercel.app/user?id=${user.id}&sig=${signature}`;
+  const userUrl = `https://fridaybots.vercel.app/?id=${user.id}&sig=${signature}`;
   const keyboard = {
     inline_keyboard: [
       [

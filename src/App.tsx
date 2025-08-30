@@ -9,10 +9,32 @@ import LoadingSpinner from './components/LoadingSpinner';
 import './firebase/config';
 import { getOrCreateUser } from './services/firebaseApi';
 import { useSearchParams } from "react-router-dom";
-
 function App() {
   const { user, loading, initializeUser } = useAuthStore();
   const { language } = useLanguageStore();
+
+  return (
+    <Router>
+      <Initializer initializeUser={initializeUser} />
+      {loading ? (
+        <LoadingSpinner />
+      ) : (
+        <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-800">
+          <Header />
+          <main className="pt-20">
+            <Routes>
+              <Route path="/" element={<Landing />} />
+              <Route path="/room/:roomId" element={<Room />} />
+            </Routes>
+          </main>
+        </div>
+      )}
+    </Router>
+  );
+}
+
+// 🔑 Separate hook into a child component inside Router
+const Initializer: React.FC<{ initializeUser: any }> = ({ initializeUser }) => {
   const [searchParams] = useSearchParams();
 
   React.useEffect(() => {
@@ -21,10 +43,8 @@ function App() {
       const sig = searchParams.get("sig");
 
       if (userId && sig) {
-        // ✅ Ask your backend to verify
         const res = await fetch(`/api/verifyUser?id=${userId}&sig=${sig}`);
         const data = await res.json();
-
         if (data.valid) {
           const userData = await getOrCreateUser({
             telegramId: userId,
@@ -33,12 +53,9 @@ function App() {
           });
           initializeUser(userData);
           return;
-        } else {
-          console.error("❌ Invalid signature. Possible spoof attempt!");
         }
       }
 
-      // fallback demo user
       const demoUser = await getOrCreateUser({
         telegramId: "demo123",
         username: "demo_user",
@@ -50,24 +67,5 @@ function App() {
     initUser();
   }, [initializeUser, searchParams]);
 
-
-  if (loading) {
-    return <LoadingSpinner />;
-  }
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-800">
-      <Router>
-        <Header />
-        <main className="pt-20">
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/room/:roomId" element={<Room />} />
-          </Routes>
-        </main>
-      </Router>
-    </div>
-  );
-}
-
-export default App;
+  return null;
+};

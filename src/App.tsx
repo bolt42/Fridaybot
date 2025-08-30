@@ -9,6 +9,7 @@ import LoadingSpinner from './components/LoadingSpinner';
 import './firebase/config';
 import { getOrCreateUser } from './services/firebaseApi';
 import { useSearchParams } from "react-router-dom";
+
 function App() {
   const { user, loading, initializeUser } = useAuthStore();
   const { language } = useLanguageStore();
@@ -69,3 +70,5 @@ const Initializer: React.FC<{ initializeUser: any }> = ({ initializeUser }) => {
 
   return null;
 };
+
+export default App; // ✅ This fixes the build

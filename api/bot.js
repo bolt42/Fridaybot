@@ -108,7 +108,7 @@ async function handlePlayGame(message) {
       [
         {
           text: "🎮 Play Friday Bingo",
-          web_app: { url: WEBAPP_URL },
+          web_app: { url: "https://fridaybots.vercel.app" },
         },
       ],
     ],

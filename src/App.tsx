@@ -16,12 +16,13 @@ function App() {
   React.useEffect(() => {
   const initUser = async () => {
     if (window.Telegram?.WebApp) {
-      const tg = window.Telegram.WebApp;
+     
+
+  const tg: any = window.Telegram.WebApp;
   tg.ready();
 
-  console.log("✅ Telegram WebApp object:", tg);
-  console.log("✅ initData (raw):", tg.initData);
-  console.log("✅ initDataUnsafe (parsed):", tg.initDataUnsafe);
+console.log("initData:", tg.initData);
+console.log("initDataUnsafe:", tg.initDataUnsafe);
       
       const tgUser = tg.initDataUnsafe?.user;
       if (tgUser) {

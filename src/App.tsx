@@ -16,7 +16,7 @@ function App() {
 
   return (
     <Router>
-      <Initializer initializeUser={initializeUser} />
+      <Initializer initializeUser={initializeUser} user={user} />
       {loading ? (
         <LoadingSpinner />
       ) : (
@@ -35,10 +35,13 @@ function App() {
 }
 
 // 🔑 Separate hook into a child component inside Router
-const Initializer: React.FC<{ initializeUser: any }> = ({ initializeUser }) => {
+const Initializer: React.FC<{ initializeUser: any, user: any }> = ({ initializeUser, user }) => {
   const [searchParams] = useSearchParams();
 
   React.useEffect(() => {
+    // Prevent initializing if the user already exists
+    if (user) return;
+
     const initUser = async () => {
       const userId = searchParams.get("id");
       const sig = searchParams.get("sig");
@@ -57,6 +60,7 @@ const Initializer: React.FC<{ initializeUser: any }> = ({ initializeUser }) => {
         }
       }
 
+      // Fallback to demo user if no valid userId
       const demoUser = await getOrCreateUser({
         telegramId: "demo123",
         username: "demo_user",
@@ -66,9 +70,9 @@ const Initializer: React.FC<{ initializeUser: any }> = ({ initializeUser }) => {
     };
 
     initUser();
-  }, [initializeUser, searchParams]);
+  }, [initializeUser, searchParams, user]);
 
   return null;
 };
 
-export default App; // ✅ This fixes the build
+export default App;

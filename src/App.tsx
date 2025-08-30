@@ -17,9 +17,11 @@ function App() {
   const initUser = async () => {
     if (window.Telegram?.WebApp) {
       const tg = window.Telegram.WebApp;
-      tg.ready();
+  tg.ready();
 
-      console.log("Telegram initDataUnsafe:", tg.initDataUnsafe);
+  console.log("✅ Telegram WebApp object:", tg);
+  console.log("✅ initData (raw):", tg.initData);
+  console.log("✅ initDataUnsafe (parsed):", tg.initDataUnsafe);
       
       const tgUser = tg.initDataUnsafe?.user;
       if (tgUser) {

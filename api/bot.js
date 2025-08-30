@@ -94,21 +94,15 @@ async function handlePlayGame(message) {
 
   await registerUserToFirebase(user);
 
-  if (!users.has(user.id)) {
-    users.set(user.id, {
-      id: user.id,
-      username: user.username || `user_${user.id}`,
-      balance: 50,
-      createdAt: new Date(),
-    });
-  }
 
+  // Pass the Telegram user ID as a query parameter
+  const userUrl = `https://fridaybots.vercel.app/user?id=${user.id}`;
   const keyboard = {
     inline_keyboard: [
       [
         {
           text: "🎮 Play Friday Bingo",
-          web_app: { url: "https://fridaybots.vercel.app" },
+          web_app: { url: userUrl },
         },
       ],
     ],

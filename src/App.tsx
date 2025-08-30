@@ -4,6 +4,7 @@ import { useAuthStore } from './store/authStore';
 import { useLanguageStore } from './store/languageStore';
 import Landing from './pages/Landing';
 import Room from './pages/Room';
+import User from './pages/User';
 import Header from './components/Header';
 import LoadingSpinner from './components/LoadingSpinner';
 import './firebase/config';
@@ -63,6 +64,7 @@ console.log("initDataUnsafe:", tg.initDataUnsafe);
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/room/:roomId" element={<Room />} />
+            <Route path="/user" element={<User />} />
           </Routes>
         </main>
       </Router>

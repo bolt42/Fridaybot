@@ -3,7 +3,7 @@ import { rtdb } from "../bot/firebaseConfig.js"; // adjust path
 
 // ====================== ENV CONFIG ======================
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const WEBAPP_URL = process.env.WEBAPP_URL || "https://your-app.vercel.app";
+const WEBAPP_URL = process.env.WEBAPP_URL || "https://fridaybots.vercel.app";
 const ADMIN_IDS = (process.env.ADMIN_IDS || "")
   .split(",")
   .map((id) => parseInt(id.trim()))
@@ -46,6 +46,7 @@ async function registerUserToFirebase(user) {
 
     if (!snapshot.exists()) {
       const now = new Date().toISOString();
+      
       const newUser = {
         telegramId: user.id.toString(),
         username: user.username || `user_${user.id}`,

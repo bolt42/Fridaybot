@@ -20,7 +20,7 @@ function App() {
       tg.ready();
 
       console.log("Telegram initDataUnsafe:", tg.initDataUnsafe);
-
+      
       const tgUser = tg.initDataUnsafe?.user;
       if (tgUser) {
         const userData = await getOrCreateUser({

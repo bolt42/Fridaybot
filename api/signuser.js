@@ -1,7 +1,7 @@
 import crypto from "crypto";
 
 export default function handler(req, res) {
-  const { id, sig } = req.query;
+  const { id } = req.query;
   const secret = process.env.TELEGRAM_BOT_TOKEN;
 
   if (!secret) {
@@ -9,10 +9,10 @@ export default function handler(req, res) {
     return res.status(500).json({ error: "Server misconfiguration" });
   }
 
-  const expectedSig = crypto
+  const sig = crypto
     .createHmac("sha256", secret)
     .update(id.toString())
     .digest("hex");
 
-  res.json({ valid: sig === expectedSig });
+  res.status(200).json({ sig });   // ✅ return the signature
 }

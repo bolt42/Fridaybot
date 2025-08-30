@@ -64,7 +64,7 @@ const Landing: React.FC = () => {
       {/* Footer */}
       <div className="text-center mt-16 pt-8 border-t border-white/20">
         <p className="text-white/60 text-sm">
-          Made with ❤️ by <span className="font-bold text-white">BOLT4L</span>
+          Made by <span className="font-bold text-white">BOLT4L</span>
         </p>
       </div>
     </div>

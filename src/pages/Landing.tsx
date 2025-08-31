@@ -28,20 +28,7 @@ const Landing: React.FC = () => {
           {t('welcome')}
         </p>
         
-        <div className="flex items-center justify-center space-x-8 text-white/60">
-          <div className="flex items-center space-x-2">
-            <Users className="w-5 h-5" />
-            <span>Multiplayer</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Sparkles className="w-5 h-5" />
-            <span>Real-time</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Trophy className="w-5 h-5" />
-            <span>Win Prizes</span>
-          </div>
-        </div>
+        
       </div>
 
       {/* Rooms Section */}
@@ -64,7 +51,7 @@ const Landing: React.FC = () => {
       {/* Footer */}
       <div className="text-center mt-16 pt-8 border-t border-white/20">
         <p className="text-white/60 text-sm">
-          Made by <span className="font-bold text-white">BOLT4L</span>
+          Made by <span className="font-bold text-white">BOLT</span>
         </p>
       </div>
     </div>

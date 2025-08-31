@@ -3,7 +3,8 @@ import { rtdb } from "../bot/firebaseConfig.js"; // adjust path
 import crypto from "crypto";
 import fetch from "node-fetch";
 import * as cheerio from "cheerio"; 
-import pdfParse from "pdf-parse";
+import pkg from "pdf-parse";
+const pdfParse = pkg.default || pkg;
 
 // ====================== ENV CONFIG ======================
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;

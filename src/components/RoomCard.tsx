@@ -42,7 +42,7 @@ const RoomCard: React.FC<RoomCardProps> = ({ room }) => {
   const getBillboardImage = () => {
     switch (room.betAmount) {
       case 20:
-        return '/images/starter.png';   // Starter’s Luck
+        return '/images/starter.webp';   // Starter’s Luck
       case 50:
         return '/images/silver.png';    // Silver Spin
       case 100:

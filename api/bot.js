@@ -95,58 +95,81 @@ async function handleUserMessage(message) {
 
   const pending = pendingActions.get(userId);
 
-  if (pending?.type === "awaiting_deposit_sms") {
-  const url = extractUrlFromText(text);
-  if (!url) {
-    await sendMessage(chatId, "❌ No link found. Please resend SMS.");
+  // ====================== deposit amount step ======================
+  if (pending?.type === "awaiting_deposit_amount") {
+    const amount = parseFloat(text);
+    if (isNaN(amount) || amount <= 0) {
+      await sendMessage(chatId, "❌ Invalid amount, try again.");
+      return;
+    }
+
+    // Save amount and ask for SMS text
+    pendingActions.set(userId, { 
+      type: "awaiting_deposit_sms", 
+      method: pending.method, 
+      amount 
+    });
+
+    await sendMessage(
+      chatId, 
+      `📩 Please forward the ${pending.method} SMS receipt (it should contain the payment link).`
+    );
     return;
   }
 
-  // 🔍 Check if link already used
-  const depositsRef = ref(rtdb, "deposits");
-  const snapshot = await get(depositsRef);
-  if (snapshot.exists()) {
-    const deposits = snapshot.val();
-    const alreadyUsed = Object.values(deposits).some(dep => dep.url === url);
-    if (alreadyUsed) {
-      await sendMessage(chatId, "❌ This receipt has already been used.");
-      pendingActions.delete(userId);
+  // ====================== deposit sms step ======================
+  if (pending?.type === "awaiting_deposit_sms") {
+    const url = extractUrlFromText(text);
+    if (!url) {
+      await sendMessage(chatId, "❌ No link found. Please resend SMS.");
       return;
     }
+
+    // 🔍 Check if link already used
+    const depositsRef = ref(rtdb, "deposits");
+    const snapshot = await get(depositsRef);
+    if (snapshot.exists()) {
+      const deposits = snapshot.val();
+      const alreadyUsed = Object.values(deposits).some(dep => dep.url === url);
+      if (alreadyUsed) {
+        await sendMessage(chatId, "❌ This receipt has already been used.");
+        pendingActions.delete(userId);
+        return;
+      }
+    }
+
+    // Create new request
+    const requestId = `dep_${userId}_${Date.now()}`;
+    depositRequests.set(requestId, { 
+      userId, 
+      amount: pending.amount, 
+      url, 
+      method: pending.method, 
+      status: "pending" 
+    });
+
+    ADMIN_IDS.forEach(adminId => {
+      const keyboard = {
+        inline_keyboard: [
+          [
+            { text: "✅ Approve", callback_data: `approve_deposit_${requestId}` },
+            { text: "❌ Decline", callback_data: `decline_deposit_${requestId}` },
+          ],
+        ],
+      };
+      sendMessage(
+        adminId, 
+        `💵 Deposit request:\n👤 @${user.username || userId}\nMethod: ${pending.method}\nAmount: ${pending.amount}\n🔗 Link: ${url}`, 
+        { reply_markup: keyboard }
+      );
+    });
+
+    await sendMessage(chatId, "⏳ Deposit request sent. Please wait for admin approval.");
+    pendingActions.delete(userId);
+    return;
   }
 
-  // Create new request
-  const requestId = `dep_${userId}_${Date.now()}`;
-  depositRequests.set(requestId, { 
-    userId, 
-    amount: pending.amount, 
-    url, 
-    method: pending.method, 
-    status: "pending" 
-  });
-
-  ADMIN_IDS.forEach(adminId => {
-    const keyboard = {
-      inline_keyboard: [
-        [
-          { text: "✅ Approve", callback_data: `approve_deposit_${requestId}` },
-          { text: "❌ Decline", callback_data: `decline_deposit_${requestId}` },
-        ],
-      ],
-    };
-    sendMessage(
-      adminId, 
-      `💵 Deposit request:\n👤 @${user.username || userId}\nMethod: ${pending.method}\nAmount: ${pending.amount}\n🔗 Link: ${url}`, 
-      { reply_markup: keyboard }
-    );
-  });
-
-  await sendMessage(chatId, "⏳ Deposit request sent. Please wait for admin approval.");
-  pendingActions.delete(userId);
-  return;
-}
-
-
+  // ====================== other commands ======================
   if (text === "/start") return handleStart(message);
   if (text === "/deposit") return handleDeposit(message);
   if (text === "/withdraw") return handleWithdraw(message);

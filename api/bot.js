@@ -3,7 +3,9 @@ import { rtdb } from "../bot/firebaseConfig.js"; // adjust path
 import crypto from "crypto";
 import fetch from "node-fetch";
 import * as cheerio from "cheerio"; 
-import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.worker.mjs";
+pdfjsLib.GlobalWorkerOptions.workerSrc = false;
+
 
 // ====================== ENV CONFIG ======================
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;

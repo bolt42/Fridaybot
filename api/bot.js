@@ -57,10 +57,27 @@ async function handleStart(message) {
 🎯 Welcome to Friday Bingo!
 
 Commands:
+/playgame - Launch game
 /deposit - Add funds
 /withdraw - Withdraw winnings
-/playgame - Launch game
+
 `);
+}
+async function handlePlaygame(message) {
+  const chatId = message.chat.id;
+
+  const keyboard = {
+    inline_keyboard: [
+      [
+        { 
+          text: "🎮 Open Friday Bingo", 
+          web_app: { url: process.env.WEBAPP_URL || "https://fridaybots.vercel.app" } 
+        }
+      ]
+    ]
+  };
+
+  await sendMessage(chatId, "🎉 Let’s play Bingo!", { reply_markup: keyboard });
 }
 
 async function handleDeposit(message) {
@@ -173,6 +190,7 @@ async function handleUserMessage(message) {
   if (text === "/start") return handleStart(message);
   if (text === "/deposit") return handleDeposit(message);
   if (text === "/withdraw") return handleWithdraw(message);
+  if (text === "/playgame") return handlePlaygame(message);
 
   await sendMessage(chatId, "Send /deposit or /withdraw to start.");
 }
@@ -216,7 +234,13 @@ async function handleCallback(callbackQuery) {
     });
 
     // Notify player
-    await sendMessage(req.userId, `✅ Deposit approved!\n+${req.amount} birr credited.`);
+    // Notify player
+await sendMessage(
+  req.userId,
+  `✅ Deposit approved!\n+${req.amount} birr credited.\n\n🎮 You can now continue playing:\n/playgame`
+);
+
+    
 
     // Notify admin
     await sendMessage(chatId, `✅ You approved deposit for @${user.username || req.userId}, amount: ${req.amount}`);
@@ -254,7 +278,11 @@ async function handleCallback(callbackQuery) {
       await update(userRef, { balance: newBalance });
 
       // Notify player
-      await sendMessage(req.userId, `✅ Withdraw approved!\n-${req.amount} birr paid to account: ${req.account}`);
+     // Notify player
+await sendMessage(
+  req.userId,
+  `✅ Withdraw approved!\n-${req.amount} birr paid to account: ${req.account}\n\n🎮 You can continue playing anytime:\n/playgame`
+);
 
       // Notify admin
       await sendMessage(chatId, `✅ You marked withdraw as paid for @${user.username || req.userId}, amount: ${req.amount}`);

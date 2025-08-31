@@ -3,7 +3,8 @@ import { rtdb } from "../bot/firebaseConfig.js"; // adjust path
 import crypto from "crypto";
 import fetch from "node-fetch";
 import * as cheerio from "cheerio"; 
-import * as pdfjsLib from "pdfjs-dist";
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
+
 
 // ====================== ENV CONFIG ======================
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -76,7 +77,7 @@ async function parseCbeReceipt(url) {
   const res = await fetch(url);
   const buffer = Buffer.from(await res.arrayBuffer());
 
-  // Parse PDF (no worker, no DOM needed)
+  // Use legacy build (no DOMMatrix/canvas required)
   const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
 
   let text = "";
@@ -86,7 +87,7 @@ async function parseCbeReceipt(url) {
     text += content.items.map(item => item.str).join(" ") + "\n";
   }
 
-  // Extract fields
+  // Extract fields with regex
   const txId = text.match(/Reference No.*?([A-Z0-9]+)/)?.[1];
   const paymentDate = text.match(/Payment Date & Time\s+([^\n]+)/)?.[1]?.trim();
   const amount = parseFloat(text.match(/Transferred Amount\s+([\d.]+)/)?.[1]);

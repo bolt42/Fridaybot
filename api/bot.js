@@ -3,9 +3,7 @@ import { rtdb } from "../bot/firebaseConfig.js"; // adjust path
 import crypto from "crypto";
 import fetch from "node-fetch";
 import * as cheerio from "cheerio"; 
-import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.worker.mjs";
-pdfjsLib.GlobalWorkerOptions.workerSrc = false;
-
+import * as pdfjsLib from "pdfjs-dist";
 
 // ====================== ENV CONFIG ======================
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -78,7 +76,7 @@ async function parseCbeReceipt(url) {
   const res = await fetch(url);
   const buffer = Buffer.from(await res.arrayBuffer());
 
-  // Load PDF
+  // Parse PDF (no worker, no DOM needed)
   const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
 
   let text = "";
@@ -88,13 +86,13 @@ async function parseCbeReceipt(url) {
     text += content.items.map(item => item.str).join(" ") + "\n";
   }
 
-  // Now extract fields from text
+  // Extract fields
   const txId = text.match(/Reference No.*?([A-Z0-9]+)/)?.[1];
-  const paymentDate = text.match(/Payment Date & Time\s+([^\n]+)/)?.[1].trim();
+  const paymentDate = text.match(/Payment Date & Time\s+([^\n]+)/)?.[1]?.trim();
   const amount = parseFloat(text.match(/Transferred Amount\s+([\d.]+)/)?.[1]);
 
-  const receiverName = text.match(/Receiver\s+([A-Z ]+)/)?.[1].trim();
-  const receiverAccount = text.match(/Account\s+([*0-9]+)/)?.[1].trim();
+  const receiverName = text.match(/Receiver\s+([A-Z ]+)/)?.[1]?.trim();
+  const receiverAccount = text.match(/Account\s+([*0-9]+)/)?.[1]?.trim();
 
   return { txId, paymentDate, amount, receiverName, receiverAccount, source: "cbe" };
 }

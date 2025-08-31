@@ -121,6 +121,26 @@ async function handleUserMessage(message) {
     pendingActions.delete(userId);
     return;
   }
+  if (pending?.type === "awaiting_deposit_amount") {
+  const amount = parseFloat(text);
+  if (isNaN(amount) || amount <= 0) {
+    await sendMessage(chatId, "❌ Invalid amount, try again.");
+    return;
+  }
+
+  // Save amount and ask for SMS text
+  pendingActions.set(userId, { 
+    type: "awaiting_deposit_sms", 
+    method: pending.method, 
+    amount 
+  });
+
+  await sendMessage(
+    chatId, 
+    `📩 Please forward the ${pending.method} SMS receipt (it should contain the payment link).`
+  );
+  return;
+}
 
   if (pending?.type === "awaiting_withdraw_amount") {
     const amount = parseFloat(text);

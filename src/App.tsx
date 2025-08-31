@@ -35,44 +35,44 @@ function App() {
 }
 
 // 🔑 Separate hook into a child component inside Router
+// 🔑 Separate hook into a child component inside Router
 const Initializer: React.FC<{ initializeUser: any, user: any }> = ({ initializeUser, user }) => {
   const [searchParams] = useSearchParams();
 
   React.useEffect(() => {
-    // Prevent initializing if the user already exists
-    if (user) return;
-
     const initUser = async () => {
       const userId = searchParams.get("id");
       const sig = searchParams.get("sig");
 
+      let telegramId = userId ?? user?.telegramId ?? "demo123";
+      let username = user?.username ?? `user_${telegramId}`;
+      let language = user?.language ?? "en";
+
+      // ✅ If telegramId + sig is provided, verify
       if (userId && sig) {
         const res = await fetch(`/api/verifyUser?id=${userId}&sig=${sig}`);
         const data = await res.json();
-        if (data.valid) {
-          const userData = await getOrCreateUser({
-            telegramId: userId,
-            username: `user_${userId}`,
-            language: "en",
-          });
-          initializeUser(userData);
-          return;
+        if (!data.valid) {
+          telegramId = "demo123";
+          username = "demo_user";
         }
       }
 
-      // Fallback to demo user if no valid userId
-      const demoUser = await getOrCreateUser({
-        telegramId: "demo123",
-        username: "demo_user",
-        language: "en",
+      // ✅ Always fetch from RTDB to get fresh balance
+      const freshUser = await getOrCreateUser({
+        telegramId,
+        username,
+        language,
       });
-      initializeUser(demoUser);
+
+      initializeUser(freshUser);
     };
 
     initUser();
-  }, [initializeUser, searchParams, user]);
+  }, [initializeUser, searchParams]);
 
   return null;
 };
+
 
 export default App;

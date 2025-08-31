@@ -48,12 +48,7 @@ const Landing: React.FC = () => {
 
       </div>
 
-      {/* Footer */}
-      <div className="text-center mt-16 pt-8 border-t border-white/20">
-        <p className="text-white/60 text-sm">
-          Made by <span className="font-bold text-white">BOLT</span>
-        </p>
-      </div>
+   
     </div>
   );
 };

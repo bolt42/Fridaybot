@@ -71,7 +71,7 @@ const translations = {
     'bet_amount': 'የውርርድ መጠን',
     'players': 'ተጫዋቾች',
     'status': 'ሁኔታ',
-    'active': 'ንቃት',
+    'active': 'Active',
     'waiting': 'ተጫዋቾችን በመጠበቅ ላይ',
     'in_progress': 'በሂደት ላይ',
     'join_room': 'ክፍል ግባ',

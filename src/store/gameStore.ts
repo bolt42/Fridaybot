@@ -216,7 +216,10 @@ placeBet: async () => {
   return cards;
 },
 fetchBingoCards: () => {
-    const cardsRef = ref(rtdb, 'bingoCards');
+      const { currentRoom } = get();
+  if (!currentRoom) return;
+
+    const cardsRef = ref(rtdb, `rooms/${currentRoom.id}/bingoCards`);
     onValue(cardsRef, (snapshot) => {
       const data = snapshot.val();
       const cards: BingoCard[] = data

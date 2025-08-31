@@ -9,7 +9,7 @@ interface Room {
   betAmount: number;
   maxPlayers: number;
   currentPlayers: number;
-  gameStatus: string;
+  status: string;
   isDemoRoom?: boolean;
 }
 
@@ -70,8 +70,8 @@ const RoomCard: React.FC<RoomCardProps> = ({ room }) => {
         
         <div className="flex items-center justify-between">
           <span className="text-white/70">{t('status')}:</span>
-          <span className={`font-medium ${getStatusColor(room.gameStatus)}`}>
-            {t(room.gameStatus)}
+          <span className={`font-medium ${getStatusColor(room.status)}`}>
+            {t(room.status)}
           </span>
         </div>
       </div>

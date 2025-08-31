@@ -3,8 +3,7 @@ import { rtdb } from "../bot/firebaseConfig.js"; // adjust path
 import crypto from "crypto";
 import fetch from "node-fetch";
 import * as cheerio from "cheerio"; 
-import pkg from "pdf-parse";
-const pdfParse = pkg.default || pkg; 
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 
 // ====================== ENV CONFIG ======================
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -71,12 +70,23 @@ async function parseTelebirrReceipt(url) {
 
   return { txId, paymentDate, amount, receiverName, receiverAccount, source: "telebirr" };
 }
+
+
 async function parseCbeReceipt(url) {
   const res = await fetch(url);
-  const buffer = await res.arrayBuffer();
-  const data = await pdfParse(Buffer.from(buffer));
-  const text = data.text;
+  const buffer = Buffer.from(await res.arrayBuffer());
 
+  // Load PDF
+  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+
+  let text = "";
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    text += content.items.map(item => item.str).join(" ") + "\n";
+  }
+
+  // Now extract fields from text
   const txId = text.match(/Reference No.*?([A-Z0-9]+)/)?.[1];
   const paymentDate = text.match(/Payment Date & Time\s+([^\n]+)/)?.[1].trim();
   const amount = parseFloat(text.match(/Transferred Amount\s+([\d.]+)/)?.[1]);
@@ -86,6 +96,7 @@ async function parseCbeReceipt(url) {
 
   return { txId, paymentDate, amount, receiverName, receiverAccount, source: "cbe" };
 }
+
 const EXPECTED_RECEIVER = {
   name: "EYOB WASIHUN GETAHUN", // set this to your real expected name
   telebirr: "2519****5523",     // expected telebirr account/phone

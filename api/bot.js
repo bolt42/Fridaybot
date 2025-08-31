@@ -109,25 +109,49 @@ async function registerTransaction(userId, tx) {
   const snap = await get(txRef);
   if (snap.exists()) throw new Error("Duplicate transaction");
 
-  // validate receiver
-  if (tx.receiverName.toLowerCase() !== EXPECTED_RECEIVER.name.toLowerCase()) {
-    throw new Error("Receiver name mismatch");
+  // ---- Defensive checks ----
+  if (!tx.receiverName) {
+    throw new Error("Receiver name missing in receipt");
   }
+  if (!tx.receiverAccount) {
+    throw new Error("Receiver account missing in receipt");
+  }
+
+  // ---- Validate receiver ----
+  if (
+    tx.receiverName.toLowerCase() !== EXPECTED_RECEIVER.name.toLowerCase()
+  ) {
+    throw new Error(
+      `Receiver name mismatch: got "${tx.receiverName}", expected "${EXPECTED_RECEIVER.name}"`
+    );
+  }
+
   if (
     (tx.source === "telebirr" && tx.receiverAccount !== EXPECTED_RECEIVER.telebirr) ||
     (tx.source === "cbe" && tx.receiverAccount !== EXPECTED_RECEIVER.cbeAccount)
   ) {
-    throw new Error("Receiver account mismatch");
+    throw new Error(
+      `Receiver account mismatch: got "${tx.receiverAccount}", expected "${
+        tx.source === "telebirr"
+          ? EXPECTED_RECEIVER.telebirr
+          : EXPECTED_RECEIVER.cbeAccount
+      }"`
+    );
   }
 
+  // ---- Store transaction ----
   await set(txRef, { ...tx, userId, createdAt: new Date().toISOString() });
 
+  // ---- Update user balance ----
   const userRef = ref(rtdb, "users/" + userId);
   const userSnap = await get(userRef);
   if (userSnap.exists()) {
     const user = userSnap.val();
     const newBalance = (user.balance || 0) + tx.amount;
-    await update(userRef, { balance: newBalance, updatedAt: new Date().toISOString() });
+    await update(userRef, {
+      balance: newBalance,
+      updatedAt: new Date().toISOString(),
+    });
   }
 }
 

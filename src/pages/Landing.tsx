@@ -18,7 +18,7 @@ const Landing: React.FC = () => {
       {/* Hero Section */}
       <div className="text-center mb-12">
         <div className="flex items-center justify-center space-x-3 mb-4">
-          <Trophy className="w-12 h-12 text-yellow-400" />
+          
           <h1 className="text-4xl md:text-6xl font-bold text-white">
             {t('friday_bingo')}
           </h1>

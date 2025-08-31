@@ -123,10 +123,6 @@ async function handleDeposit(message) {
   const chatId = message.chat.id;
   const userId = message.from.id;
 
-  if (!users.has(userId)) {
-    await sendMessage(chatId, "እባክዎ በመጀመሪያ /playgame ይተይቡ።");
-    return;
-  }
 
   const keyboard = {
     inline_keyboard: [

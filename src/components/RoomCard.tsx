@@ -83,7 +83,7 @@ const RoomCard: React.FC<RoomCardProps> = ({ room }) => {
             <div className="flex items-center space-x-1">
               <Coins className="w-4 h-4 text-yellow-300" />
               <span className="text-white font-medium">
-                {room.isDemoRoom ? t('free_play') : Number(room.betAmount ?? 0).toFixed(2)}
+                {room.isDemoRoom ? t('free_play') : Number(room.betAmount ?? 0).toFixed(2)+" ETB"}
               </span>
             </div>
           </div>

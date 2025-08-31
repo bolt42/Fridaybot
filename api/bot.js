@@ -2,7 +2,7 @@ import { ref, get, set } from "firebase/database";
 import { rtdb } from "../bot/firebaseConfig.js"; // adjust path
 import crypto from "crypto";
 import fetch from "node-fetch";
-import cheerio from "cheerio";
+import * as cheerio from "cheerio";
 import pdfParse from "pdf-parse";
 
 // ====================== ENV CONFIG ======================

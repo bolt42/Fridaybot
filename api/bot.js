@@ -192,25 +192,39 @@ async function handleCallback(callbackQuery) {
   }
 
   if (data.startsWith("approve_deposit_")) {
-    const requestId = data.replace("approve_deposit_", "");
-    const req = depositRequests.get(requestId);
-    if (!req) return;
+  const requestId = data.replace("approve_deposit_", "");
+  const req = depositRequests.get(requestId);
+  if (!req) return;
 
-    const userRef = ref(rtdb, "users/" + req.userId);
-    const snap = await get(userRef);
-    if (snap.exists()) {
-      const newBalance = (snap.val().balance || 0) + req.amount;
-      await update(userRef, { balance: newBalance });
+  const userRef = ref(rtdb, "users/" + req.userId);
+  const snap = await get(userRef);
+  if (snap.exists()) {
+    const user = snap.val();
+    const newBalance = (user.balance || 0) + req.amount;
+    await update(userRef, { balance: newBalance });
 
-      // Notify player
-      await sendMessage(req.userId, `✅ Deposit approved!\n+${req.amount} birr credited.`);
+    // ✅ Save receipt to RTDB so it cannot be reused
+    const depositId = `dep_${Date.now()}`;
+    const depositRef = ref(rtdb, `deposits/${depositId}`);
+    await set(depositRef, {
+      userId: req.userId,
+      username: user.username || req.userId,
+      amount: req.amount,
+      url: req.url,
+      method: req.method,
+      date: new Date().toISOString(),
+    });
 
-      // Notify admin
-      await sendMessage(chatId, `✅ You approved deposit for @${snap.val().username || req.userId}, amount: ${req.amount}`);
-    }
+    // Notify player
+    await sendMessage(req.userId, `✅ Deposit approved!\n+${req.amount} birr credited.`);
 
-    depositRequests.delete(requestId);
+    // Notify admin
+    await sendMessage(chatId, `✅ You approved deposit for @${user.username || req.userId}, amount: ${req.amount}`);
   }
+
+  depositRequests.delete(requestId);
+}
+
 
   if (data.startsWith("decline_deposit_")) {
     const requestId = data.replace("decline_deposit_", "");

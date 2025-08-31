@@ -1,7 +1,9 @@
 import { ref, get, set } from "firebase/database";
 import { rtdb } from "../bot/firebaseConfig.js"; // adjust path
 import crypto from "crypto";
-
+import fetch from "node-fetch";
+import cheerio from "cheerio";
+import pdfParse from "pdf-parse";
 
 // ====================== ENV CONFIG ======================
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -38,6 +40,82 @@ async function telegram(method, payload) {
 
 async function sendMessage(chatId, text, extra = {}) {
   return telegram("sendMessage", { chat_id: chatId, text, ...extra });
+}
+// ====================== receipt analyzer ========================
+function extractUrlFromText(text) {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const match = text.match(urlRegex);
+  return match ? match[0] : null;
+}
+async function parseTelebirrReceipt(url) {
+  const res = await fetch(url);
+  const html = await res.text();
+  const $ = cheerio.load(html);
+
+  const txId = $("td.receipttableTd2").first().text().trim();
+  const paymentDate = $("td.receipttableTd").eq(1).text().trim();
+  const amountRaw = $("td.receipttableTd").eq(2).text().trim();
+  const amount = parseFloat(amountRaw.replace(/[^\d.]/g, ""));
+
+  let receiverAccount = $("#paid_reference_number").text().trim();
+  let receiverName = "";
+  if (receiverAccount) {
+    const parts = receiverAccount.split(/\s+/);
+    receiverAccount = parts[0];
+    receiverName = parts.slice(1).join(" ");
+  } else {
+    receiverName = $("td:contains('Credited Party name')").next().text().trim();
+    receiverAccount = $("td:contains('Credited party account no')").next().text().trim();
+  }
+
+  return { txId, paymentDate, amount, receiverName, receiverAccount, source: "telebirr" };
+}
+async function parseCbeReceipt(url) {
+  const res = await fetch(url);
+  const buffer = await res.arrayBuffer();
+  const data = await pdfParse(Buffer.from(buffer));
+  const text = data.text;
+
+  const txId = text.match(/Reference No.*?([A-Z0-9]+)/)?.[1];
+  const paymentDate = text.match(/Payment Date & Time\s+([^\n]+)/)?.[1].trim();
+  const amount = parseFloat(text.match(/Transferred Amount\s+([\d.]+)/)?.[1]);
+
+  const receiverName = text.match(/Receiver\s+([A-Z ]+)/)?.[1].trim();
+  const receiverAccount = text.match(/Account\s+([*0-9]+)/)?.[1].trim();
+
+  return { txId, paymentDate, amount, receiverName, receiverAccount, source: "cbe" };
+}
+const EXPECTED_RECEIVER = {
+  name: "EYOB WASIHUN GETAHUN", // set this to your real expected name
+  telebirr: "2519****5523",     // expected telebirr account/phone
+  cbeAccount: "1****4639",      // expected CBE account
+};
+
+async function registerTransaction(userId, tx) {
+  const txRef = ref(rtdb, "transactions/" + tx.txId);
+  const snap = await get(txRef);
+  if (snap.exists()) throw new Error("Duplicate transaction");
+
+  // validate receiver
+  if (tx.receiverName.toLowerCase() !== EXPECTED_RECEIVER.name.toLowerCase()) {
+    throw new Error("Receiver name mismatch");
+  }
+  if (
+    (tx.source === "telebirr" && tx.receiverAccount !== EXPECTED_RECEIVER.telebirr) ||
+    (tx.source === "cbe" && tx.receiverAccount !== EXPECTED_RECEIVER.cbeAccount)
+  ) {
+    throw new Error("Receiver account mismatch");
+  }
+
+  await set(txRef, { ...tx, userId, createdAt: new Date().toISOString() });
+
+  const userRef = ref(rtdb, "users/" + userId);
+  const userSnap = await get(userRef);
+  if (userSnap.exists()) {
+    const user = userSnap.val();
+    const newBalance = (user.balance || 0) + tx.amount;
+    await update(userRef, { balance: newBalance, updatedAt: new Date().toISOString() });
+  }
 }
 
 // ====================== USER REGISTRATION ======================
@@ -158,19 +236,13 @@ async function handleCallback(callbackQuery) {
   const userId = callbackQuery.from.id;
   const data = callbackQuery.data;
 
-  if (data === "deposit_cbe") {
-    await sendMessage(
-      chatId,
-      "📱 CBE Mobile Banking SMS ደረሰኞን ይላኩ..."
-    );
-    pendingActions.set(userId, { type: "awaiting_cbe_sms" });
+   if (data === "deposit_cbe") {
+    await sendMessage(chatId, "💵 እባክዎ የሚያስገቡትን መጠን ያስገቡ (ምሳሌ: 200)");
+    pendingActions.set(userId, { type: "awaiting_deposit_amount", method: "cbe" });
   } else if (data === "deposit_telebirr") {
-    await sendMessage(
-      chatId,
-      "💳 Telebirr ደረሰኝ ይላኩ..."
-    );
-    pendingActions.set(userId, { type: "awaiting_telebirr_receipt" });
-  } else if (data.startsWith("complete_withdrawal_")) {
+    await sendMessage(chatId, "💵 እባክዎ የሚያስገቡትን መጠን ያስገቡ (ምሳሌ: 200)");
+    pendingActions.set(userId, { type: "awaiting_deposit_amount", method: "telebirr" });
+  }  else if (data.startsWith("complete_withdrawal_")) {
     const requestId = data.replace("complete_withdrawal_", "");
     const request = withdrawalRequests.get(requestId);
 
@@ -266,17 +338,60 @@ async function handleUserMessage(message) {
       return;
     }
 
-    if (pending.type === "awaiting_cbe_sms") {
-      await sendMessage(chatId, "👉 CBE SMS received (parser not yet implemented).");
-      pendingActions.delete(userId);
+   if (pending.type === "awaiting_deposit_amount") {
+      const amount = parseFloat(text);
+
+      if (isNaN(amount) || amount <= 0) {
+        await sendMessage(chatId, "❌ ትክክለኛ መጠን ያስገቡ።");
+        return;
+      }
+
+      if (pending.method === "cbe") {
+        await sendMessage(chatId, `📱 እባክዎ የ CBE የክፍያ ደረሰኝ ይላኩ።\n💵 መጠን: ${amount} ብር`);
+        pendingActions.set(userId, { type: "awaiting_cbe_sms", amount });
+      }
+
+      if (pending.method === "telebirr") {
+        await sendMessage(chatId, `💳 እባክዎ የ Telebirr ደረሰኝ ይላኩ።\n💵 መጠን: ${amount} ብር`);
+        pendingActions.set(userId, { type: "awaiting_telebirr_receipt", amount });
+      }
+
       return;
     }
 
-    if (pending.type === "awaiting_telebirr_receipt") {
-      await sendMessage(chatId, "👉 Telebirr receipt received (parser not yet implemented).");
-      pendingActions.delete(userId);
-      return;
+    if (pending.type === "awaiting_cbe_sms" || pending.type === "awaiting_telebirr_receipt") {
+  const url = extractUrlFromText(text);
+  if (!url) {
+    await sendMessage(chatId, "❌ No receipt link found in your message. Please resend the SMS text.");
+    return;
+  }
+
+  try {
+    let tx;
+    if (url.includes("transactioninfo.ethiotelecom.et/receipt")) {
+      // Telebirr
+      tx = await parseTelebirrReceipt(url);
+    } else if (url.includes("apps.cbe.com.et:100/BranchReceipt")) {
+      // CBE PDF
+      tx = await parseCbeReceipt(url);
+    } else {
+      throw new Error("Unknown receipt type (URL not recognized)");
     }
+
+    await registerTransaction(userId, tx);
+    await sendMessage(
+      chatId,
+      `✅ Deposit successful!\n\n🧾 TxID: ${tx.txId}\n💵 Amount: ${tx.amount} birr\n📅 Date: ${tx.paymentDate}`
+    );
+  } catch (err) {
+    console.error("❌ Deposit error:", err);
+    await sendMessage(chatId, "❌ Deposit validation failed: " + err.message);
+  }
+
+  pendingActions.delete(userId);
+  return;
+}
+
   }
 
   // ---- Commands ----

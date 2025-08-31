@@ -211,9 +211,14 @@ async function handleCallback(callbackQuery) {
     if (snap.exists()) {
       const newBalance = (snap.val().balance || 0) + req.amount;
       await update(userRef, { balance: newBalance });
-      sendMessage(req.userId, `✅ Deposit approved! +${req.amount} birr`);
+
+      // Notify player
+      await sendMessage(req.userId, `✅ Deposit approved!\n+${req.amount} birr credited.`);
+
+      // Notify admin
+      await sendMessage(chatId, `✅ You approved deposit for @${snap.val().username || req.userId}, amount: ${req.amount}`);
     }
-    sendMessage(chatId, "Deposit approved ✅");
+
     depositRequests.delete(requestId);
   }
 
@@ -221,8 +226,13 @@ async function handleCallback(callbackQuery) {
     const requestId = data.replace("decline_deposit_", "");
     const req = depositRequests.get(requestId);
     if (!req) return;
-    sendMessage(req.userId, "❌ Your deposit was declined.");
-    sendMessage(chatId, "Deposit declined ❌");
+
+    // Notify player
+    await sendMessage(req.userId, "❌ Your deposit was declined.");
+
+    // Notify admin
+    await sendMessage(chatId, `❌ You declined deposit for @${req.userId}, amount: ${req.amount}`);
+
     depositRequests.delete(requestId);
   }
 
@@ -238,9 +248,14 @@ async function handleCallback(callbackQuery) {
       const user = snap.val();
       const newBalance = (user.balance || 0) - req.amount;
       await update(userRef, { balance: newBalance });
-      sendMessage(req.userId, `✅ Withdraw approved! -${req.amount} birr\nAccount: ${req.account}`);
+
+      // Notify player
+      await sendMessage(req.userId, `✅ Withdraw approved!\n-${req.amount} birr paid to account: ${req.account}`);
+
+      // Notify admin
+      await sendMessage(chatId, `✅ You marked withdraw as paid for @${user.username || req.userId}, amount: ${req.amount}`);
     }
-    sendMessage(chatId, "Withdraw marked as paid ✅");
+
     withdrawalRequests.delete(requestId);
   }
 
@@ -248,8 +263,13 @@ async function handleCallback(callbackQuery) {
     const requestId = data.replace("decline_withdraw_", "");
     const req = withdrawalRequests.get(requestId);
     if (!req) return;
-    sendMessage(req.userId, "❌ Your withdraw request was declined.");
-    sendMessage(chatId, "Withdraw declined ❌");
+
+    // Notify player
+    await sendMessage(req.userId, "❌ Your withdrawal request was declined.");
+
+    // Notify admin
+    await sendMessage(chatId, `❌ You declined withdraw request for @${req.userId}, amount: ${req.amount}`);
+
     withdrawalRequests.delete(requestId);
   }
 

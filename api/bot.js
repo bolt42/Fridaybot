@@ -3,7 +3,7 @@ import { rtdb } from "../bot/firebaseConfig.js"; // adjust path
 import crypto from "crypto";
 import fetch from "node-fetch";
 import * as cheerio from "cheerio"; 
-import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
+import PDFParser from "pdf2json";
 
 
 // ====================== ENV CONFIG ======================
@@ -77,24 +77,26 @@ async function parseCbeReceipt(url) {
   const res = await fetch(url);
   const buffer = Buffer.from(await res.arrayBuffer());
 
-  const pdf = await getDocument({ data: buffer }).promise;
+  const pdfParser = new PDFParser();
 
-  let text = "";
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const content = await page.getTextContent();
-    text += content.items.map(item => item.str).join(" ") + "\n";
-  }
+  return new Promise((resolve, reject) => {
+    pdfParser.on("pdfParser_dataError", errData => reject(errData.parserError));
+    pdfParser.on("pdfParser_dataReady", pdfData => {
+      const text = pdfParser.getRawTextContent();
 
-  // Extract fields
-  const txId = text.match(/Reference No.*?([A-Z0-9]+)/)?.[1];
-  const paymentDate = text.match(/Payment Date & Time\s+([^\n]+)/)?.[1]?.trim();
-  const amount = parseFloat(text.match(/Transferred Amount\s+([\d.]+)/)?.[1]);
+      // Extract fields
+      const txId = text.match(/Reference No.*?([A-Z0-9]+)/)?.[1];
+      const paymentDate = text.match(/Payment Date & Time\s+([^\n]+)/)?.[1]?.trim();
+      const amount = parseFloat(text.match(/Transferred Amount\s+([\d.]+)/)?.[1]);
 
-  const receiverName = text.match(/Receiver\s+([A-Z ]+)/)?.[1]?.trim();
-  const receiverAccount = text.match(/Account\s+([*0-9]+)/)?.[1]?.trim();
+      const receiverName = text.match(/Receiver\s+([A-Z ]+)/)?.[1]?.trim();
+      const receiverAccount = text.match(/Account\s+([*0-9]+)/)?.[1]?.trim();
 
-  return { txId, paymentDate, amount, receiverName, receiverAccount, source: "cbe" };
+      resolve({ txId, paymentDate, amount, receiverName, receiverAccount, source: "cbe" });
+    });
+
+    pdfParser.parseBuffer(buffer);
+  });
 }
 const EXPECTED_RECEIVER = {
   name: "EYOB WASIHUN GETAHUN", // set this to your real expected name

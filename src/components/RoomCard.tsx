@@ -42,15 +42,15 @@ const RoomCard: React.FC<RoomCardProps> = ({ room }) => {
   const getBillboardImage = () => {
     switch (room.betAmount) {
       case 20:
-        return '/images/starter.webp';   // Starter’s Luck
+        return 'src/components/images/starter.webp';   // Starter’s Luck
       case 50:
-        return '/images/silver.png';    // Silver Spin
+        return 'src/components/images/silver.jpg';    // Silver Spin
       case 100:
-        return '/images/golden.png';    // Golden Jackpot
+        return 'src/components/images/golden.jpg';    // Golden Jackpot
       case 200:
-        return '/images/royal.png';     // Royal Bingo
+        return 'src/components/images/royal.webp';     // Royal Bingo
       default:
-        return '/images/default.png';
+        return 'src/components/images/demo.jpg';
     }
   };
 

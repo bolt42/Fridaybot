@@ -96,89 +96,56 @@ async function handleUserMessage(message) {
   const pending = pendingActions.get(userId);
 
   if (pending?.type === "awaiting_deposit_sms") {
-    const url = extractUrlFromText(text);
-    if (!url) {
-      await sendMessage(chatId, "❌ No link found. Please resend SMS.");
+  const url = extractUrlFromText(text);
+  if (!url) {
+    await sendMessage(chatId, "❌ No link found. Please resend SMS.");
+    return;
+  }
+
+  // 🔍 Check if link already used
+  const depositsRef = ref(rtdb, "deposits");
+  const snapshot = await get(depositsRef);
+  if (snapshot.exists()) {
+    const deposits = snapshot.val();
+    const alreadyUsed = Object.values(deposits).some(dep => dep.url === url);
+    if (alreadyUsed) {
+      await sendMessage(chatId, "❌ This receipt has already been used.");
+      pendingActions.delete(userId);
       return;
     }
-
-    const requestId = `dep_${userId}_${Date.now()}`;
-    depositRequests.set(requestId, { userId, amount: pending.amount, url, method: pending.method, status: "pending" });
-
-    ADMIN_IDS.forEach(adminId => {
-      const keyboard = {
-        inline_keyboard: [
-          [
-            { text: "✅ Approve", callback_data: `approve_deposit_${requestId}` },
-            { text: "❌ Decline", callback_data: `decline_deposit_${requestId}` },
-          ],
-        ],
-      };
-      sendMessage(adminId, `💵 Deposit request:\n👤 @${user.username || userId}\nMethod: ${pending.method}\nAmount: ${pending.amount}\n🔗 Link: ${url}`, { reply_markup: keyboard });
-    });
-
-    await sendMessage(chatId, "⏳ Deposit request sent. Please wait for admin approval.");
-    pendingActions.delete(userId);
-    return;
-  }
-  if (pending?.type === "awaiting_deposit_amount") {
-  const amount = parseFloat(text);
-  if (isNaN(amount) || amount <= 0) {
-    await sendMessage(chatId, "❌ Invalid amount, try again.");
-    return;
   }
 
-  // Save amount and ask for SMS text
-  pendingActions.set(userId, { 
-    type: "awaiting_deposit_sms", 
+  // Create new request
+  const requestId = `dep_${userId}_${Date.now()}`;
+  depositRequests.set(requestId, { 
+    userId, 
+    amount: pending.amount, 
+    url, 
     method: pending.method, 
-    amount 
+    status: "pending" 
   });
 
-  await sendMessage(
-    chatId, 
-    `📩 Please forward the ${pending.method} SMS receipt (it should contain the payment link).`
-  );
+  ADMIN_IDS.forEach(adminId => {
+    const keyboard = {
+      inline_keyboard: [
+        [
+          { text: "✅ Approve", callback_data: `approve_deposit_${requestId}` },
+          { text: "❌ Decline", callback_data: `decline_deposit_${requestId}` },
+        ],
+      ],
+    };
+    sendMessage(
+      adminId, 
+      `💵 Deposit request:\n👤 @${user.username || userId}\nMethod: ${pending.method}\nAmount: ${pending.amount}\n🔗 Link: ${url}`, 
+      { reply_markup: keyboard }
+    );
+  });
+
+  await sendMessage(chatId, "⏳ Deposit request sent. Please wait for admin approval.");
+  pendingActions.delete(userId);
   return;
 }
 
-  if (pending?.type === "awaiting_withdraw_amount") {
-    const amount = parseFloat(text);
-    if (isNaN(amount) || amount <= 0) {
-      await sendMessage(chatId, "❌ Invalid amount");
-      return;
-    }
-    if (amount > (user.balance || 0)) {
-      await sendMessage(chatId, "❌ Insufficient balance");
-      return;
-    }
-    await sendMessage(chatId, "🏦 Enter your account number:");
-    pendingActions.set(userId, { type: "awaiting_withdraw_account", amount });
-    return;
-  }
-
-  if (pending?.type === "awaiting_withdraw_account") {
-    const account = text;
-    const requestId = `wd_${userId}_${Date.now()}`;
-    const request = { userId, amount: pending.amount, account, status: "pending" };
-    withdrawalRequests.set(requestId, request);
-
-    ADMIN_IDS.forEach(adminId => {
-      const keyboard = {
-        inline_keyboard: [
-          [
-            { text: "✅ Paid", callback_data: `approve_withdraw_${requestId}` },
-            { text: "❌ Decline", callback_data: `decline_withdraw_${requestId}` },
-          ],
-        ],
-      };
-      sendMessage(adminId, `💸 Withdraw request:\n👤 @${user.username || userId}\nAmount: ${pending.amount}\nAccount: ${account}`, { reply_markup: keyboard });
-    });
-
-    await sendMessage(chatId, "⏳ Withdrawal request sent. Please wait for admin approval.");
-    pendingActions.delete(userId);
-    return;
-  }
 
   if (text === "/start") return handleStart(message);
   if (text === "/deposit") return handleDeposit(message);

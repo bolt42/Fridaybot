@@ -174,26 +174,27 @@ cancelBet: async () => {
   if (!selectedCard || !currentRoom || !user) return false;
 
   try {
-    // ✅ Unclaim the card
-    const cardRef = ref(rtdb, `cards/${selectedCard.id}`);
+    // ✅ Unclaim the card (correct path!)
+    const cardRef = ref(rtdb, `rooms/${currentRoom.id}/bingoCards/${selectedCard.id}`);
     await update(cardRef, {
       claimed: false,
       claimedBy: null,
     });
 
-    // ✅ Remove from players
+    // ✅ Remove the player from the room
     const playerRef = ref(rtdb, `rooms/${currentRoom.id}/players/${user.telegramId}`);
-    await remove(playerRef);
+    await fbset(playerRef, null); // or remove(playerRef) if imported
 
     // ✅ Reset local state
     set({ selectedCard: null });
 
     return true;
   } catch (err) {
-    console.error("Cancel bet failed", err);
+    console.error("❌ Cancel bet failed:", err);
     return false;
   }
 },
+
 
   checkBingo: async () => {
     const { selectedCard, currentRoom } = get();

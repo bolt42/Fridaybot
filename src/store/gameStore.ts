@@ -169,37 +169,43 @@ placeBet: async () => {
   }
 },
 
-cancelBet: async () => {
+cancelBet: async (cardId?: string) => {
   const { selectedCard, currentRoom } = get();
-  if (!selectedCard || !currentRoom) return false;
+  const { user } = useAuthStore.getState();
 
-  if (!selectedCard?.id) {
-    console.error("❌ Cancel bet failed: no selectedCard.id");
+  if (!currentRoom || !user) return false;
+
+  // Use passed cardId OR fallback to selectedCard.id
+  const targetCardId = cardId || selectedCard?.id;
+  if (!targetCardId) {
+    console.error("❌ Cancel bet failed: no target card id");
     return false;
   }
 
   try {
-    // ✅ Unclaim the card only
-    const cardRef = ref(
-      rtdb,
-      `rooms/${currentRoom.id}/bingoCards/${selectedCard.id}`
-    );
+    // ✅ Unclaim the card
+    const cardRef = ref(rtdb, `rooms/${currentRoom.id}/bingoCards/${targetCardId}`);
     await update(cardRef, {
       claimed: false,
       claimedBy: null,
     });
 
-    // ✅ Reset local state
-    set({ selectedCard: null });
+    // ✅ Remove player entry from the room
+    const playerRef = ref(rtdb, `rooms/${currentRoom.id}/players/${user.telegramId}`);
+    await remove(playerRef);
 
-    console.log("✅ Card unclaimed successfully");
+    // ✅ Reset local state if this was the selected card
+    if (selectedCard?.id === targetCardId) {
+      set({ selectedCard: null });
+    }
+
+    console.log("✅ Bet canceled successfully");
     return true;
   } catch (err) {
     console.error("❌ Cancel bet failed:", err);
     return false;
   }
 },
-
 
   checkBingo: async () => {
     const { selectedCard, currentRoom } = get();

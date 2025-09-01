@@ -63,7 +63,7 @@ const Room: React.FC = () => {
   };
 
   const handlePlaceBet = async () => {
-  if (!selectedCard || !currentRoom) return;
+  if (!displayedCard || !currentRoom) return;
 
   if (!currentRoom.isDemoRoom && (user?.balance || 0) < currentRoom.betAmount) {
     setGameMessage('Insufficient balance!');
@@ -86,9 +86,12 @@ const Room: React.FC = () => {
 };
 
 const handleCancelBet = async () => {
-  const success = await cancelBet();
+  const cardId = userCard?.id || selectedCard?.id;
+  if (!cardId) return;
+
+  const success = await cancelBet(cardId);
   if (success) {
-    setHasBet(false); // ✅ reset to allow placing again
+    setHasBet(false);
     setGameMessage('Bet canceled');
   } else {
     console.error("❌ Failed to cancel bet");

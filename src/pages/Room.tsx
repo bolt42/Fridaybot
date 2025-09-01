@@ -180,7 +180,7 @@ return (
           {["B", "I", "N", "G", "O"].map((letter) => (
             <div
               key={letter}
-              className="w-6 h-6 flex items-center justify-center font-bold text-[10px] bg-purple-600 rounded p-[1px]"
+              className="w-6 h-6 flex items-center justify-center font-bold text-[10px] bg-purple-600 rounded mb-[0.5px]"
             >
               {letter}
             </div>

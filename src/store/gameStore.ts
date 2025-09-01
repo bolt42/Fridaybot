@@ -55,57 +55,73 @@ export const useGameStore = create<GameState>((set, get) => ({
       set({ rooms });
     });
   },
-   
 joinRoom: (roomId: string) => {
-  const { rooms } = get();
-  const room = rooms.find(r => r.id === roomId);
-  if (room) {
-    set({ currentRoom: room });
-    const roomRef = ref(rtdb, 'rooms/' + roomId);
+  const roomRef = ref(rtdb, 'rooms/' + roomId);
 
-    onValue(roomRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const updatedRoom = { id: roomId, ...snapshot.val() } as Room;
-        set({ currentRoom: updatedRoom });
+  // Listen directly to this room
+  onValue(roomRef, (snapshot) => {
+    if (snapshot.exists()) {
+      const updatedRoom = { id: roomId, ...snapshot.val() } as Room;
+      set({ currentRoom: updatedRoom });
 
-        // Start countdown only when enough players
-        if (
-          updatedRoom.players &&
-          Object.keys(updatedRoom.players).length >= 2 &&
-          updatedRoom.gameStatus === "waiting"
-        ) {
-          const countdownRef = ref(rtdb, `rooms/${roomId}`);
-          update(countdownRef, { gameStatus: "countdown", countdown: 30 });
-
-          let sec = 30;
-          const timer = setInterval(async () => {
-            sec--;
-            await update(countdownRef, { countdown: sec });
-            if (sec <= 0) {
-              clearInterval(timer);
-              await update(countdownRef, { gameStatus: "playing" });
-
-              // ✅ Deduct balance when game actually starts
-              const { players, betAmount } = updatedRoom;
-              for (const pid in players) {
-                const player = players[pid];
-                const userRef = ref(rtdb, `users/${player.id}/balance`);
-                get(userRef).then(snap => {
-                  if (snap.exists()) {
-                    const bal = snap.val() || 0;
-                    update(userRef, bal - betAmount);
-                  }
-                });
-              }
-            }
-          }, 1000);
-        }
-      }
-    });
-
-    get().fetchBingoCards();
-  }
+      // ✅ Also fetch cards once room is set
+      get().fetchBingoCards();
+    } else {
+      set({ currentRoom: null });
+    }
+  });
 },
+
+joinRoom: (roomId: string) => {
+  const roomRef = ref(rtdb, 'rooms/' + roomId);
+
+  onValue(roomRef, (snapshot) => {
+    if (snapshot.exists()) {
+      const updatedRoom = { id: roomId, ...snapshot.val() } as Room;
+      set({ currentRoom: updatedRoom });
+
+      // ✅ Fetch cards once room is set
+      get().fetchBingoCards();
+
+      // ✅ Start countdown only when enough players & still waiting
+      if (
+        updatedRoom.players &&
+        Object.keys(updatedRoom.players).length >= 2 &&
+        updatedRoom.gameStatus === "waiting"
+      ) {
+        const countdownRef = ref(rtdb, `rooms/${roomId}`);
+        update(countdownRef, { gameStatus: "countdown", countdown: 30 });
+
+        let sec = 30;
+        const timer = setInterval(async () => {
+          sec--;
+          await update(countdownRef, { countdown: sec });
+
+          if (sec <= 0) {
+            clearInterval(timer);
+            await update(countdownRef, { gameStatus: "playing" });
+
+            // ✅ Deduct balance when game actually starts
+            const { players, betAmount } = updatedRoom;
+            for (const pid in players) {
+              const player = players[pid];
+              const userBalanceRef = ref(rtdb, `users/${player.id}/balance`);
+              get(userBalanceRef).then((snap) => {
+                if (snap.exists()) {
+                  const bal = snap.val() || 0;
+                  update(userBalanceRef, bal - betAmount);
+                }
+              });
+            }
+          }
+        }, 1000);
+      }
+    } else {
+      set({ currentRoom: null });
+    }
+  });
+},
+
 
   
   selectCard: (cardId: string) => {

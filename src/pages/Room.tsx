@@ -21,12 +21,7 @@ const cardNumbers = selectedCard?.numbers ?? [];
 
   const cancelBet = useGameStore((state) => state.cancelBet);
 
-  const handleCancelBet = async () => {
-    const success = await cancelBet();
-    if (!success) {
-      console.error("❌ Failed to cancel bet");
-    }
-  };
+  
 
   React.useEffect(() => {
     if (roomId) {
@@ -66,7 +61,7 @@ const cardNumbers = selectedCard?.numbers ?? [];
   const success = await placeBet();
 
   if (success) {
-    setHasBet(true);
+    setHasBet(true); // ✅ mark bet placed
     if (!currentRoom.isDemoRoom) {
       await updateBalance(-currentRoom.betAmount);
     }
@@ -77,6 +72,17 @@ const cardNumbers = selectedCard?.numbers ?? [];
     }, 2000);
   }
 };
+
+const handleCancelBet = async () => {
+  const success = await cancelBet();
+  if (success) {
+    setHasBet(false); // ✅ reset to allow placing again
+    setGameMessage('Bet canceled');
+  } else {
+    console.error("❌ Failed to cancel bet");
+  }
+};
+
 
   const handleNumberClick = (num: number) => {
     setMarkedNumbers((prev) =>
@@ -267,23 +273,17 @@ const cardNumbers = selectedCard?.numbers ?? [];
     {/* Bet button */}
     {selectedCard ? (
       <div className="mt-6">
-        <button
-          onClick={hasBet ? handleCancelBet : handlePlaceBet}
-          disabled={selectedCard?.claimed && !hasBet}
-          className={`mt-4 px-4 py-2 rounded-lg shadow font-semibold ${
-            currentRoom?.gameStatus === "countdown" && hasBet
-              ? "bg-red-600 hover:bg-red-700 text-white"
-              : hasBet
-              ? "bg-gray-500 cursor-not-allowed"
-              : "bg-blue-600 hover:bg-blue-700 text-white"
-          }`}
-        >
-          {currentRoom?.gameStatus === "countdown" && hasBet
-            ? t("cancel_bet")
-            : hasBet
-            ? t("bet_placed")
-            : t("place_bet")}
-        </button>
+       <button
+  onClick={hasBet ? handleCancelBet : handlePlaceBet}
+  className={`mt-4 px-4 py-2 rounded-lg shadow font-semibold ${
+    hasBet
+      ? "bg-red-600 hover:bg-red-700 text-white" // Cancel Bet
+      : "bg-blue-600 hover:bg-blue-700 text-white" // Place Bet
+  }`}
+>
+  {hasBet ? t("cancel_bet") : t("place_bet")}
+</button>
+
       </div>
     ) : (
       <p className="mt-6 text-gray-400">No card selected yet...</p>

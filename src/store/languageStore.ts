@@ -26,6 +26,8 @@ const translations = {
     'waiting': 'Waiting ',
     'in_progress': 'In Progress',
     'join_room': 'Join Room',
+    'cancel_bet':'Cancel bet',
+    'place_bet':'Place bet',
     
     // Room
     'room_details': 'Room',
@@ -34,7 +36,6 @@ const translations = {
     'game_area': 'Game Area',
     'select_card': 'Select Your Card',
     'card_number': 'Card #',
-    'place_bet': 'Place Bet',
     'bingo': 'BINGO!',
     'numbers_called': 'Numbers Called',
     'waiting_players': 'Waiting ...',
@@ -75,7 +76,7 @@ const translations = {
     'waiting': 'በመጠበቅ..',
     'in_progress': 'በሂደት ላይ',
     'join_room': 'ክፍል ግባ',
-    
+    'cancel_bet':'ውርርድ ሰርዝ',
     // Room
     'room_details': 'ክፍል',
     'payout': 'ክፍያ',

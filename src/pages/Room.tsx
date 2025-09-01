@@ -15,8 +15,9 @@ const Room: React.FC = () => {
   const { currentRoom, bingoCards, joinRoom, selectCard, placeBet, checkBingo , selectedCard } = useGameStore();
   const { user, updateBalance } = useAuthStore();
  const userCard = bingoCards.find(
-      (card) => card.claimedBy === user?.telegramId
-    );
+  (card) => card.claimed && card.claimedBy === user?.telegramId
+);
+
      const displayedCard = userCard || selectedCard ;
  const cardNumbers = displayedCard?.numbers ?? [];
   const [markedNumbers, setMarkedNumbers] = useState<number[]>([]);

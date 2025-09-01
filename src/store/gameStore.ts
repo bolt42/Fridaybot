@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { rtdb } from '../firebase/config';
-import { ref, onValue, get, set as fbset , update } from 'firebase/database';
+import { ref, onValue, get, set as fbset , update , remove} from 'firebase/database';
 import { useAuthStore } from '../store/authStore';
 interface BingoCard {
   id: string;
@@ -175,21 +175,15 @@ cancelBet: async () => {
 
   try {
     // Unclaim the card
-    const cardRef = ref(
-      rtdb,
-      `rooms/${currentRoom.id}/bingoCards/${selectedCard.id}`
-    );
+    const cardRef = ref(rtdb, `rooms/${currentRoom.id}/bingoCards/${selectedCard.id}`);
     await update(cardRef, {
       claimed: false,
       claimedBy: null,
     });
 
-    // Remove player from room
-    const playerRef = ref(
-      rtdb,
-      `rooms/${currentRoom.id}/players/${user.telegramId}`
-    );
-    await remove(playerRef); // ✅ safer than set(null)
+    // Remove player entry
+    const playerRef = ref(rtdb, `rooms/${currentRoom.id}/players/${user.telegramId}`);
+    await remove(playerRef); // ✅ correct
 
     // Reset local state
     set({ selectedCard: null });

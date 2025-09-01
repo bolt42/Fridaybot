@@ -48,7 +48,7 @@ admin_declined_deposit : "❌ Admin declined Request ! ",
 am: {
 welcome:"🎯 Welcom to Friday Bingo!\n\nትዕዛዞች:\n/playgame - ጨዋታ ጀምር\n/deposit - ገንዘብ ጨምር\n/withdraw - ትርፍ ወስድ",
 choose_lang: "🌍 ቋንቋ ይምረጡ:",
-receipt_used : "ደረሰኝ ጥቅም ላይ ይውላል!".
+receipt_used : "ደረሰኝ ጥቅም ላይ ይውላል!",
 admin_declined_withdraw : "❌ Admin ጥያቄውን አልተቀበለውም ! ",
 admin_approved_withdraw :  "✅ Admin ጥያቄ ጸድቋል ! ",
 admin_approved_deposit:  "✅ Admin ጥያቄ ጸድቋል ! ",

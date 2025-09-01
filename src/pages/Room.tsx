@@ -143,11 +143,15 @@ const handleCancelBet = async () => {
   ? currentRoom!.calledNumbers!
   : demoCalledNumbers;
 
-  // Demo card for visualization
- // compute bet status directly from store
-const alreadyBetted =  !!userCard ;
-// fallback to local hasBet (for the current session)
+// Find this player's data inside the room
+const playerData = currentRoom?.players?.[user?.telegramId];
+
+// True if backend says this player already bet
+const alreadyBetted = !!playerData?.betAmount && playerData.betAmount > 0;
+
+// Combine with local state for smoother UX
 const isBetActive = hasBet || alreadyBetted;
+
 
 
 

@@ -10,25 +10,14 @@ const Room: React.FC = () => {
   const { roomId } = useParams();
   const navigate = useNavigate();
   const { t } = useLanguageStore();
-   const demoCard = {
-    id: 'demo',
-    serialNumber: 42,
-    claimed: false,
-    numbers: [
-      [7, 16, 31, 46, 61],
-      [3, 23, 34, 52, 67],
-      [12, 28, 0, 58, 74], // 0 represents FREE space
-      [1, 19, 45, 49, 62],
-      [14, 25, 38, 55, 69]
-    ]
-  };
+   
 
   const { currentRoom, bingoCards, joinRoom, selectCard, placeBet, checkBingo , selectedCard } = useGameStore();
   const { user, updateBalance } = useAuthStore();
  const userCard = bingoCards.find(
       (card) => card.claimedBy === user?.telegramId
     );
-     const displayedCard = userCard || selectedCard || demoCard;
+     const displayedCard = userCard || selectedCard ;
  const cardNumbers = displayedCard?.numbers ?? [];
   const [markedNumbers, setMarkedNumbers] = useState<number[]>([]);
   const [hasBet, setHasBet] = useState(false);

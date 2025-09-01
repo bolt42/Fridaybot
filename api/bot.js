@@ -141,49 +141,65 @@ async function handleUserMessage(message) {
   }
 
   // ====================== DEPOSIT SMS STEP ======================
-  if (pending?.type === "awaiting_deposit_sms") {
-    const url = extractUrlFromText(text);
-    if (!url) {
-      await sendMessage(chatId, "❌ No link found. Please resend SMS.");
-      return;
-    }
-
-    const requestId = `dep_${userId}_${Date.now()}`;
-    depositRequests.set(requestId, { 
-      userId, 
-      amount: pending.amount, 
-      url, 
-      smsText: text,   // full SMS text
-      method: pending.method, 
-      status: "pending" 
-    });
-
-    ADMIN_IDS.forEach(adminId => {
-      const keyboard = {
-        inline_keyboard: [
-          [
-            { text: "✅ Approve", callback_data: `approve_deposit_${requestId}` },
-            { text: "❌ Decline", callback_data: `decline_deposit_${requestId}` },
-          ],
-        ],
-      };
-
-      sendMessage(
-        adminId, 
-        `💵 Deposit request:\n` +
-        `👤 @${user?.username || userId}\n` +
-        `Method: ${pending.method}\n` +
-        `Amount: ${pending.amount}\n\n` +
-        `📩 SMS:\n${text}\n\n` +
-        `🔗 Extracted link: ${url}`, 
-        { reply_markup: keyboard }
-      );
-    });
-
-    await sendMessage(chatId, "⏳ Deposit request sent. Please wait for admin approval.");
-    pendingActions.delete(userId);
+  // ====================== DEPOSIT SMS STEP ======================
+if (pending?.type === "awaiting_deposit_sms") {
+  const url = extractUrlFromText(text);
+  if (!url) {
+    await sendMessage(chatId, "❌ No link found. Please resend SMS.");
     return;
   }
+
+  // ✅ Check if URL already exists in deposits
+  const depositsRef = ref(rtdb, "deposits");
+  const snap = await get(depositsRef);
+  if (snap.exists()) {
+    const deposits = snap.val();
+    const alreadyUsed = Object.values(deposits).some(
+      d => d.url === url
+    );
+    if (alreadyUsed) {
+      await sendMessage(chatId, "⚠️ This receipt/link has already been used. Please send a valid one.");
+      pendingActions.delete(userId);
+      return;
+    }
+  }
+
+  const requestId = `dep_${userId}_${Date.now()}`;
+  depositRequests.set(requestId, { 
+    userId, 
+    amount: pending.amount, 
+    url, 
+    smsText: text,   // full SMS text
+    method: pending.method, 
+    status: "pending" 
+  });
+
+  ADMIN_IDS.forEach(adminId => {
+    const keyboard = {
+      inline_keyboard: [
+        [
+          { text: "✅ Approve", callback_data: `approve_deposit_${requestId}` },
+          { text: "❌ Decline", callback_data: `decline_deposit_${requestId}` },
+        ],
+      ],
+    };
+
+    sendMessage(
+      adminId, 
+      `💵 Deposit request:\n` +
+      `👤 @${user?.username || userId}\n` +
+      `Method: ${pending.method}\n` +
+      `Amount: ${pending.amount}\n\n` +
+      `📩 SMS:\n${text}\n\n` +
+      `🔗 Extracted link: ${url}`, 
+      { reply_markup: keyboard }
+    );
+  });
+
+  await sendMessage(chatId, "⏳ Deposit request sent. Please wait for admin approval.");
+  pendingActions.delete(userId);
+  return;
+}
 
   // ====================== WITHDRAW AMOUNT STEP ======================
   if (pending?.type === "awaiting_withdraw_amount") {

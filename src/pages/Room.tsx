@@ -162,134 +162,134 @@ const cardNumbers = selectedCard?.numbers ?? [];
 
 
   {/* Main content in one row */}
-  <div className="flex flex-row gap-2 w-full max-w-full">
+<div className="flex flex-row gap-2 w-full max-w-full">
+  {/* Left side = 40% (Called numbers + Current call) */}
+  <div className="w-2/5 flex flex-col gap-2">
     {/* Called Numbers */}
-    <div className="flex-1 bg-white/10 p-2 rounded border border-white/20 max-h-[400px] text-xs overflow-y-auto">
-  <h3 className="text-center font-bold mb-1 text-sm">Called</h3>
-
-  {/* Bingo Header Row */}
-  <div className="grid grid-cols-5 gap-1 mb-1">
-    {["B", "I", "N", "G", "O"].map((letter) => (
-      <div
-        key={letter}
-        className="w-6 h-6 flex items-center justify-center font-bold text-[12px] bg-purple-600 rounded"
-      >
-        {letter}
-      </div>
-    ))}
-  </div>
-
-  {/* Numbers Grid (5 columns) */}
-  <div className="grid grid-cols-5 gap-1">
-    {[...Array(15)].map((_, rowIdx) =>
-      ["B", "I", "N", "G", "O"].map((col, colIdx) => {
-        const num = rowIdx + 1 + colIdx * 15; // Correct range per column
-        const isCalled = displayedCalledNumbers.includes(num);
-
-        return (
+    <div className="bg-white/10 p-2 rounded border border-white/20 max-h-[400px] text-xs overflow-y-auto">
+      <h3 className="text-center font-bold mb-1 text-sm">Called</h3>
+      {/* Bingo Header Row */}
+      <div className="grid grid-cols-5 gap-1 mb-1">
+        {["B", "I", "N", "G", "O"].map((letter) => (
           <div
-            key={`${col}-${num}`}
-            className={`w-6 h-6 flex items-center justify-center rounded font-bold text-[10px] transition
-              ${isCalled ? "bg-green-500 text-white scale-105" : "bg-white/20"}
-            `}
+            key={letter}
+            className="w-6 h-6 flex items-center justify-center font-bold text-[12px] bg-purple-600 rounded"
           >
-            {num}
+            {letter}
           </div>
-        );
-      })
-    )}
-  </div>
-</div>
+        ))}
+      </div>
+
+      {/* Numbers Grid */}
+      <div className="grid grid-cols-5 gap-1">
+        {[...Array(15)].map((_, rowIdx) =>
+          ["B", "I", "N", "G", "O"].map((col, colIdx) => {
+            const num = rowIdx + 1 + colIdx * 15;
+            const isCalled = displayedCalledNumbers.includes(num);
+
+            return (
+              <div
+                key={`${col}-${num}`}
+                className={`w-6 h-6 flex items-center justify-center rounded font-bold text-[10px] transition
+                  ${isCalled ? "bg-green-500 text-white scale-105" : "bg-white/20"}
+                `}
+              >
+                {num}
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
 
     {/* Current Call */}
-    <div className="flex flex-col items-center justify-center bg-white/10 p-2 rounded border border-white/20 min-w-[80px]">
+    <div className="flex flex-col items-center justify-center bg-white/10 p-2 rounded border border-white/20 min-h-[100px]">
       <span className="text-[10px] mb-1">Current</span>
       <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-lg font-bold shadow">
         -
       </div>
-      <span></span>
-    
-
-    {/* Your Card */}
-    {/* Your Card */}
-<div className="flex-1 bg-white/10 p-2 rounded border border-white/20 text-xs">
-  <div className="flex justify-between items-center mb-1">
-   <h3 className="font-bold text-sm">{t('select_card')}</h3>
-<select
-  value={selectedCard?.id ?? ''}
-  onChange={(e) => selectCard(e.target.value)}
-  className="bg-white/20 text-white rounded px-1 py-0.5 text-[10px]"
->
-  <option value="" disabled>Select Card</option>
-  {bingoCards
-    .slice() // create copy so sort doesn’t mutate state
-    .sort((a, b) => a.serialNumber - b.serialNumber) // ascending order
-    .map((card) => (
-      <option key={card.id} value={card.id} disabled={card.claimed}>
-        Card {card.serialNumber} {card.claimed ? "(claimed)" : ""}
-      </option>
-    ))}
-</select>
+    </div>
   </div>
 
-  {/* Bingo Header Row */}
-  <div className="grid grid-cols-5 gap-1 mb-1">
-    {["B", "I", "N", "G", "O"].map((letter) => (
-      <div
-        key={letter}
-        className="w-8 h-8 flex items-center justify-center font-bold text-[12px] bg-purple-600 rounded"
+  {/* Right side = 60% (Your Card) */}
+  <div className="w-3/5 bg-white/10 p-2 rounded border border-white/20 text-xs">
+    {/* Card header */}
+    <div className="flex justify-between items-center mb-1">
+      <h3 className="font-bold text-sm">{t('select_card')}</h3>
+      <select
+        value={selectedCard?.id ?? ''}
+        onChange={(e) => selectCard(e.target.value)}
+        className="bg-white/20 text-white rounded px-1 py-0.5 text-[10px]"
       >
-        {letter}
-      </div>
-    ))}
-  </div>
+        <option value="" disabled>Select Card</option>
+        {bingoCards
+          .slice()
+          .sort((a, b) => a.serialNumber - b.serialNumber)
+          .map((card) => (
+            <option key={card.id} value={card.id} disabled={card.claimed}>
+              Card {card.serialNumber} {card.claimed ? "(claimed)" : ""}
+            </option>
+          ))}
+      </select>
+    </div>
 
-  {/* Numbers Grid */}
-  <div className="grid grid-cols-5 gap-1">
-  {cardNumbers.flat().map((num, idx) => {
-    const isMarked = markedNumbers.includes(num);
-    return (
-      <div
-        key={`${num}-${idx}`}
-        onClick={() => handleNumberClick(num)}
-        className={`w-8 h-8 flex items-center justify-center rounded font-bold text-[11px] cursor-pointer transition
-          ${isMarked ? "bg-green-500 text-white scale-105" : "bg-white/20 hover:bg-white/30"}
-        `}
-      >
-        {num === 0 ? "★" : num} {/* FREE space gets a star */}
-      </div>
-    );
-  })}
-</div>
-</div>
-{selectedCard ? (
-  <div className="mt-6">
+    {/* Bingo Header Row */}
+    <div className="grid grid-cols-5 gap-1 mb-1">
+      {["B", "I", "N", "G", "O"].map((letter) => (
+        <div
+          key={letter}
+          className="w-8 h-8 flex items-center justify-center font-bold text-[12px] bg-purple-600 rounded"
+        >
+          {letter}
+        </div>
+      ))}
+    </div>
+
+    {/* Numbers Grid */}
+    <div className="grid grid-cols-5 gap-1">
+      {cardNumbers.flat().map((num, idx) => {
+        const isMarked = markedNumbers.includes(num);
+        return (
+          <div
+            key={`${num}-${idx}`}
+            onClick={() => handleNumberClick(num)}
+            className={`w-8 h-8 flex items-center justify-center rounded font-bold text-[11px] cursor-pointer transition
+              ${isMarked ? "bg-green-500 text-white scale-105" : "bg-white/20 hover:bg-white/30"}
+            `}
+          >
+            {num === 0 ? "★" : num}
+          </div>
+        );
+      })}
+    </div>
+
     {/* Bet button */}
-    <button
-  onClick={hasBet ? handleCancelBet : handlePlaceBet}
-  disabled={selectedCard?.claimed && !hasBet}
-  className={`mt-4 px-4 py-2 rounded-lg shadow font-semibold ${
-    currentRoom?.gameStatus === "countdown" && hasBet
-      ? "bg-red-600 hover:bg-red-700 text-white"
-      : hasBet
-      ? "bg-gray-500 cursor-not-allowed"
-      : "bg-blue-600 hover:bg-blue-700 text-white"
-  }`}
->
-  {currentRoom?.gameStatus === "countdown" && hasBet
-    ? t("cancel_bet")
-    : hasBet
-    ? t("bet_placed")
-    : t("place_bet")}
-</button>
-
+    {selectedCard ? (
+      <div className="mt-6">
+        <button
+          onClick={hasBet ? handleCancelBet : handlePlaceBet}
+          disabled={selectedCard?.claimed && !hasBet}
+          className={`mt-4 px-4 py-2 rounded-lg shadow font-semibold ${
+            currentRoom?.gameStatus === "countdown" && hasBet
+              ? "bg-red-600 hover:bg-red-700 text-white"
+              : hasBet
+              ? "bg-gray-500 cursor-not-allowed"
+              : "bg-blue-600 hover:bg-blue-700 text-white"
+          }`}
+        >
+          {currentRoom?.gameStatus === "countdown" && hasBet
+            ? t("cancel_bet")
+            : hasBet
+            ? t("bet_placed")
+            : t("place_bet")}
+        </button>
+      </div>
+    ) : (
+      <p className="mt-6 text-gray-400">No card selected yet...</p>
+    )}
   </div>
-) : (
-  <p className="mt-6 text-gray-400">No card selected yet...</p>
-)}
-
 </div>
-  </div>
+
 
   {/* Bottom buttons */}
   <div className="flex flex-row gap-2 mt-3 w-full">

@@ -92,6 +92,14 @@ async function telegram(method, payload) {
   });
   return res.json();
 }
+function homeKeyboard(lang) {
+  return {
+    inline_keyboard: [
+      [{ text: "🏠 Home", callback_data: "go_home" }],
+    ],
+  };
+}
+
 
 async function sendMessage(chatId, text, extra = {}) {
   return telegram("sendMessage", { chat_id: chatId, text, ...extra });

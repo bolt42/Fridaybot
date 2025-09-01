@@ -79,7 +79,7 @@ const translations = {
     'cancel_bet':'ውርርድ ሰርዝ',
     // Room
     'room_details': 'ክፍል',
-    'payout': 'ክፍያ',
+    'payout': 'ደራሽ',
     'max_players': 'ከፍተኛ ተጫዋቾች',
     'game_area': 'የጨዋታ አካባቢ',
     'select_card': 'ካርድዎን ይምረጡ',

@@ -180,7 +180,7 @@ return (
           {["B", "I", "N", "G", "O"].map((letter) => (
             <div
               key={letter}
-              className="w-6 h-6 flex items-center justify-center font-bold text-[10px] bg-purple-600 rounded mb-[0.5px]"
+              className="w-6 h-6 flex items-center justify-center font-bold text-[10px] bg-purple-600 rounded "
             >
               {letter}
             </div>
@@ -197,7 +197,7 @@ return (
               return (
                 <div
                   key={`${col}-${num}`}
-                  className={`flex items-center justify-center rounded font-bold text-[11px] transition
+                  className={`flex items-center justify-center mb-[0.5px] rounded font-bold text-[11px] transition 
                     ${isCalled ? "bg-green-500 text-white scale-105" : "bg-white/20"}
                   `}
                 >

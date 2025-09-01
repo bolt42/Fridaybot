@@ -32,6 +32,8 @@ const Room: React.FC = () => {
     const userCard = bingoCards.find(
       (card) => card.claimedBy === user?.telegramId
     );
+     const displayedCard = userCard || selectedCard || demoCard;
+ const cardNumbers = displayedCard?.numbers ?? [];
 
     if (userCard) {
       selectCard(userCard.id); // auto-select the user's card
@@ -145,8 +147,6 @@ const handleCancelBet = async () => {
     ]
   };
 
- const displayedCard = userCard || selectedCard || demoCard;
- const cardNumbers = displayedCard?.numbers ?? [];
 
  return (
     <div className="min-h-screen bg-gradient-to-br from-purple-800 via-purple-900 to-blue-900 flex flex-col items-center p-2 text-white">

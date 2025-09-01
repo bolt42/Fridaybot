@@ -175,7 +175,7 @@ const handleCancelBet = async () => {
 
 
   {/* Main content in one row */}
-<div className="flex flex-row gap-2 w-full max-w-full">
+<div className="flex flex-row gap-2 w-full max-w-full h-full ">
  {/* Left side = 40% (Called numbers + Current call) */}
 {/* Left side = 40% (Called numbers + Current call) */}
 <div className="w-2/5 h-full flex flex-col bg-white/10 p-2 rounded border border-white/20 text-xs">

@@ -167,7 +167,7 @@ const cardNumbers = selectedCard?.numbers ?? [];
   <div className="w-2/5 flex flex-col gap-2">
     {/* Called Numbers */}
     <div className="bg-white/10 p-2 rounded border border-white/20 max-h-[400px] text-xs overflow-y-auto">
-      <h3 className="text-center font-bold mb-1 text-sm">Called</h3>
+   
       {/* Bingo Header Row */}
       <div className="grid grid-cols-5 gap-1 mb-1">
         {["B", "I", "N", "G", "O"].map((letter) => (
@@ -203,16 +203,17 @@ const cardNumbers = selectedCard?.numbers ?? [];
     </div>
 
     {/* Current Call */}
-    <div className="flex flex-col items-center justify-center bg-white/10 p-2 rounded border border-white/20 min-h-[100px]">
+   
+  </div>
+
+  {/* Right side = 60% (Your Card) */}
+  <div className="w-3/5 bg-white/10 p-2 rounded border border-white/20 text-xs">
+   <div className="flex flex-col items-center justify-center bg-white/10 p-2 rounded border border-white/20 min-h-[100px]">
       <span className="text-[10px] mb-1">Current</span>
       <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-lg font-bold shadow">
         -
       </div>
     </div>
-  </div>
-
-  {/* Right side = 60% (Your Card) */}
-  <div className="w-3/5 bg-white/10 p-2 rounded border border-white/20 text-xs">
     {/* Card header */}
     <div className="flex justify-between items-center mb-1">
       <h3 className="font-bold text-sm">{t('select_card')}</h3>

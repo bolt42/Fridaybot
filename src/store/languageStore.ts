@@ -28,7 +28,7 @@ const translations = {
     'join_room': 'Join Room',
     
     // Room
-    'room_details': 'Room Details',
+    'room_details': 'Room',
     'payout': 'Payout',
     'max_players': 'Max Players',
     'game_area': 'Game Area',
@@ -77,7 +77,7 @@ const translations = {
     'join_room': 'ክፍል ግባ',
     
     // Room
-    'room_details': 'የክፍል ዝርዝሮች',
+    'room_details': 'ክፍል',
     'payout': 'ክፍያ',
     'max_players': 'ከፍተኛ ተጫዋቾች',
     'game_area': 'የጨዋታ አካባቢ',

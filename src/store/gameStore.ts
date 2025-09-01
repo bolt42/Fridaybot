@@ -121,20 +121,26 @@ placeBet: async () => {
   const { user } = useAuthStore.getState();
   if (!currentRoom || !selectedCard || !user) return false;
 
+  const userId = user.telegramId;
+  if (!userId) {
+    console.error("❌ No valid telegramId for user:", user);
+    return false;
+  }
+
   if ((user.balance || 0) < currentRoom.betAmount) {
     alert("Insufficient balance!");
     return false;
   }
 
   try {
-    // ✅ Mark card as claimed in room
+    // ✅ Mark card as claimed
     const cardRef = ref(rtdb, `rooms/${currentRoom.id}/bingoCards/${selectedCard.id}`);
-    await update(cardRef, { claimed: true, claimedBy: user.id });
+    await update(cardRef, { claimed: true, claimedBy: userId });
 
     // ✅ Add player to room
-    const playerRef = ref(rtdb, `rooms/${currentRoom.id}/players/${user.id}`);
+    const playerRef = ref(rtdb, `rooms/${currentRoom.id}/players/${userId}`);
     await fbset(playerRef, {
-      id: user.id,
+      telegramId: userId,
       username: user.username,
       betAmount: currentRoom.betAmount,
       cardId: selectedCard.id,
@@ -146,10 +152,17 @@ placeBet: async () => {
     return false;
   }
 },
+
 cancelBet: async () => {
   const { currentRoom, selectedCard } = get();
   const { user } = useAuthStore.getState();
   if (!currentRoom || !selectedCard || !user) return false;
+
+  const userId = user.telegramId;
+  if (!userId) {
+    console.error("❌ No valid telegramId for user:", user);
+    return false;
+  }
 
   try {
     // ✅ Unclaim card
@@ -157,7 +170,7 @@ cancelBet: async () => {
     await update(cardRef, { claimed: false, claimedBy: null });
 
     // ✅ Remove from players list
-    const playerRef = ref(rtdb, `rooms/${currentRoom.id}/players/${user.id}`);
+    const playerRef = ref(rtdb, `rooms/${currentRoom.id}/players/${userId}`);
     await update(playerRef, null);
 
     // ✅ Reset locally
@@ -168,11 +181,6 @@ cancelBet: async () => {
     return false;
   }
 },
-
-
-
-  
-  
   checkBingo: async () => {
     const { selectedCard, currentRoom } = get();
     if (!selectedCard || !currentRoom) return false;

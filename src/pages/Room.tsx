@@ -144,7 +144,12 @@ const handleCancelBet = async () => {
   : demoCalledNumbers;
 
   // Demo card for visualization
- 
+ // compute bet status directly from store
+const alreadyBetted =  !!userCard && currentRoom?.players?.[user?.telegramId]?.betAmount > 0;
+
+// fallback to local hasBet (for the current session)
+const isBetActive = hasBet || alreadyBetted;
+
 
 
 return (
@@ -271,23 +276,24 @@ return (
 
         {/* Bet button */}
         {displayedCard ? (
-          <div className="mt-6">
-            <button
-              onClick={hasBet ? handleCancelBet : handlePlaceBet}
-              className={`mt-4 px-4 py-2 rounded-lg shadow font-semibold ${
-                hasBet
-                  ? "bg-red-600 hover:bg-red-700 text-white"
-                  : "bg-blue-600 hover:bg-blue-700 text-white"
-              }`}
-            >
-              {hasBet
-                ? t("cancel_bet") + " card:" + displayedCard.serialNumber
-                : t("place_bet") + " card:" + displayedCard.serialNumber}
-            </button>
-          </div>
-        ) : (
-          <p className="mt-6 text-gray-400">No card selected yet...</p>
-        )}
+  <div className="mt-6">
+    <button
+      onClick={isBetActive ? handleCancelBet : handlePlaceBet}
+      className={`mt-4 px-4 py-2 rounded-lg shadow font-semibold ${
+        isBetActive
+          ? "bg-red-600 hover:bg-red-700 text-white"
+          : "bg-blue-600 hover:bg-blue-700 text-white"
+      }`}
+    >
+      {isBetActive
+        ? t("cancel_bet") + " card:" + displayedCard.serialNumber
+        : t("place_bet") + " card:" + displayedCard.serialNumber}
+    </button>
+  </div>
+) : (
+  <p className="mt-6 text-gray-400">No card selected yet...</p>
+)}
+
       </div>
     </div>
 

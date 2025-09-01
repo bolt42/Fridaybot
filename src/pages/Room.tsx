@@ -177,43 +177,41 @@ const handleCancelBet = async () => {
   {/* Main content in one row */}
 <div className="flex flex-row gap-2 w-full max-w-full">
   {/* Left side = 40% (Called numbers + Current call) */}
-  <div className="w-2/5 flex flex-col gap-2">
-    {/* Called Numbers */}
-    <div className="bg-white/10 p-2 rounded border border-white/20 max-h-[400px] text-xs overflow-y-auto">
-   
-      {/* Bingo Header Row */}
-      <div className="grid grid-cols-5 gap-1 mb-1">
-        {["B", "I", "N", "G", "O"].map((letter) => (
+ <div className="bg-white/10 p-2 rounded border border-white/20 text-xs">
+  {/* Bingo Header Row */}
+  <div className="grid grid-cols-5 gap-1 mb-1">
+    {["B", "I", "N", "G", "O"].map((letter) => (
+      <div
+        key={letter}
+        className="w-6 h-6 flex items-center justify-center font-bold text-[12px] bg-purple-600 rounded"
+      >
+        {letter}
+      </div>
+    ))}
+  </div>
+
+  {/* Numbers Grid */}
+  <div className="grid grid-cols-5 gap-1">
+    {[...Array(15)].map((_, rowIdx) =>
+      ["B", "I", "N", "G", "O"].map((col, colIdx) => {
+        const num = rowIdx + 1 + colIdx * 15;
+        const isCalled = displayedCalledNumbers.includes(num);
+
+        return (
           <div
-            key={letter}
-            className="w-6 h-6 flex items-center justify-center font-bold text-[12px] bg-purple-600 rounded"
+            key={`${col}-${num}`}
+            className={`w-6 h-6 flex items-center justify-center rounded font-bold text-[10px] transition
+              ${isCalled ? "bg-green-500 text-white scale-105" : "bg-white/20"}
+            `}
           >
-            {letter}
+            {num}
           </div>
-        ))}
-      </div>
+        );
+      })
+    )}
+  </div>
+</div>
 
-      {/* Numbers Grid */}
-      <div className="grid grid-cols-5 gap-1">
-        {[...Array(15)].map((_, rowIdx) =>
-          ["B", "I", "N", "G", "O"].map((col, colIdx) => {
-            const num = rowIdx + 1 + colIdx * 15;
-            const isCalled = displayedCalledNumbers.includes(num);
-
-            return (
-              <div
-                key={`${col}-${num}`}
-                className={`w-6 h-6 flex items-center justify-center rounded font-bold text-[10px] transition
-                  ${isCalled ? "bg-green-500 text-white scale-105" : "bg-white/20"}
-                `}
-              >
-                {num}
-              </div>
-            );
-          })
-        )}
-      </div>
-    </div>
 
     {/* Current Call */}
    

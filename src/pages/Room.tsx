@@ -36,11 +36,11 @@ const Room: React.FC = () => {
     }
   }, [roomId, joinRoom]);
   React.useEffect(() => {
-    
-
     if (userCard) {
-      selectCard(userCard.id); // auto-select the user's card
-    }
+    selectCard(userCard.id); // auto-select the user's card
+    setHasBet(true); // ✅ mark that the user already has a bet
+  }
+
     if (currentRoom?.gameStatus === 'countdown' && countdown > 0) {
       const timer = setInterval(() => {
         setCountdown(prev => {
@@ -54,7 +54,7 @@ const Room: React.FC = () => {
       
       return () => clearInterval(timer);
     }
-  }, [currentRoom?.gameStatus, countdown,selectCard]);
+  }, [userCard,currentRoom?.gameStatus, countdown,selectCard]);
 
   const handleCardSelect = (cardId: string) => {
     if (!hasBet) {
@@ -274,23 +274,22 @@ const handleCancelBet = async () => {
     </div>
 
     {/* Bet button */}
-    {selectedCard ? (
-      <div className="mt-6">
-       <button
-  onClick={hasBet ? handleCancelBet : handlePlaceBet}
-  className={`mt-4 px-4 py-2 rounded-lg shadow font-semibold ${
-    hasBet
-      ? "bg-red-600 hover:bg-red-700 text-white" // Cancel Bet
-      : "bg-blue-600 hover:bg-blue-700 text-white" // Place Bet
-  }`}
->
-  {hasBet ? t("cancel_bet") : t("place_bet")}
-</button>
-
-      </div>
-    ) : (
-      <p className="mt-6 text-gray-400">No card selected yet...</p>
-    )}
+   {displayedCard ? (
+  <div className="mt-6">
+    <button
+      onClick={hasBet ? handleCancelBet : handlePlaceBet}
+      className={`mt-4 px-4 py-2 rounded-lg shadow font-semibold ${
+        hasBet
+          ? "bg-red-600 hover:bg-red-700 text-white" // Cancel Bet
+          : "bg-blue-600 hover:bg-blue-700 text-white" // Place Bet
+      }`}
+    >
+      {hasBet ? t("cancel_bet") : t("place_bet")}
+    </button>
+  </div>
+) : (
+  <p className="mt-6 text-gray-400">No card selected yet...</p>
+)}
   </div>
 </div>
 

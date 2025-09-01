@@ -98,6 +98,7 @@ async function handleWithdraw(message) {
 }
 
 
+
 // ====================== STATE MACHINE ======================
 const pendingActions = new Map();
 const depositRequests = new Map();
@@ -201,62 +202,70 @@ if (pending?.type === "awaiting_deposit_sms") {
   return;
 }
 
-  // ====================== WITHDRAW AMOUNT STEP ======================
-  if (pending?.type === "awaiting_withdraw_amount") {
-    const amount = parseFloat(text);
-    if (isNaN(amount) || amount <= 0) {
-      await sendMessage(chatId, "❌ Invalid amount, try again.");
-      return;
-    }
-
-    if (amount > user.balance) {
-      await sendMessage(chatId, "❌ Insufficient balance.");
-      return;
-    }
-
-    pendingActions.set(userId, { 
-      type: "awaiting_withdraw_account", 
-      amount 
-    });
-
-    await sendMessage(chatId, "🏦 Please enter your account details for withdrawal.");
+ // ====================== WITHDRAW AMOUNT STEP ======================
+if (pending?.type === "awaiting_withdraw_amount") {
+  const amount = parseFloat(text);
+  if (isNaN(amount) || amount <= 0) {
+    await sendMessage(chatId, "❌ Invalid amount, try again.");
     return;
   }
 
-  // ====================== WITHDRAW ACCOUNT STEP ======================
-  if (pending?.type === "awaiting_withdraw_account") {
-    const requestId = `wd_${userId}_${Date.now()}`;
-    withdrawRequests.set(requestId, { 
-      userId, 
-      amount: pending.amount, 
-      account: text, 
-      status: "pending" 
-    });
-
-    ADMIN_IDS.forEach(adminId => {
-      const keyboard = {
-        inline_keyboard: [
-          [
-            { text: "✅ Approve", callback_data: `approve_withdraw_${requestId}` },
-            { text: "❌ Decline", callback_data: `decline_withdraw_${requestId}` },
-          ],
-        ],
-      };
-
-      sendMessage(
-        adminId, 
-        `💸 Withdrawal request:\n` +
-        `👤 @${user?.username || userId}\n` +
-        `Amount: ${pending.amount}\n` +
-        `Account: ${text}`, 
-        { reply_markup: keyboard }
-      );
-    });
-
-    await sendMessage(chatId, "⏳ Withdrawal request sent. Please wait for admin approval.");
+  if (amount > user.balance) {
+    await sendMessage(chatId, "❌ Insufficient balance.");
     pendingActions.delete(userId);
     return;
   }
+
+  // ✅ Ask method next
+  const keyboard = {
+    inline_keyboard: [
+      [{ text: "🏦 CBE", callback_data: "withdraw_cbe" }],
+      [{ text: "📱 Telebirr", callback_data: "withdraw_telebirr" }],
+    ],
+  };
+
+  await sendMessage(chatId, "Select withdrawal method:", { reply_markup: keyboard });
+  pendingActions.set(userId, { type: "awaiting_withdraw_method", amount });
+  return;
+}
+
+// ====================== WITHDRAW ACCOUNT STEP ======================
+if (pending?.type === "awaiting_withdraw_account") {
+  const requestId = `wd_${userId}_${Date.now()}`;
+  withdrawalRequests.set(requestId, {
+    userId,
+    amount: pending.amount,
+    method: pending.method,
+    account: text,
+    status: "pending",
+  });
+
+  ADMIN_IDS.forEach((adminId) => {
+    const keyboard = {
+      inline_keyboard: [
+        [
+          { text: "✅ Approve", callback_data: `approve_withdraw_${requestId}` },
+          { text: "❌ Reject", callback_data: `decline_withdraw_${requestId}` },
+        ],
+      ],
+    };
+
+    sendMessage(
+      adminId,
+      `💸 Withdrawal request:\n` +
+        `👤 @${user?.username || userId}\n` +
+        `Method: ${pending.method}\n` +
+        `Amount: ${pending.amount}\n` +
+        `Account/Phone: ${text}`,
+      { reply_markup: keyboard }
+    );
+  });
+
+  await sendMessage(chatId, "⏳ Withdrawal request sent. Please wait for admin approval.");
+  pendingActions.delete(userId);
+  return;
+}
+
 
   // ====================== FALLBACK ======================
   await sendMessage(chatId, "Send /deposit or /withdraw to start.");
@@ -396,38 +405,52 @@ await sendMessage(
 
     withdrawalRequests.delete(requestId);
   }
-   if (data === "withdraw_cbe" || data === "withdraw_telebirr") {
+ if (data === "withdraw_cbe" || data === "withdraw_telebirr") {
   const pending = pendingActions.get(userId);
   if (!pending || pending.type !== "awaiting_withdraw_method") return;
 
-  const amount = pending.amount;
-  let instructions = "";
+  const method = data === "withdraw_cbe" ? "CBE" : "Telebirr";
+  pendingActions.set(userId, { type: "awaiting_withdraw_account", amount: pending.amount, method });
 
-  if (data === "withdraw_cbe") {
-    instructions = `🏦 Withdraw via CBE\n\nAccount: 1000123456789\nName: John Doe\n\n📋 Tap to copy the account number.`;
-    pendingActions.set(userId, { type: "awaiting_withdraw_sms", amount, method: "CBE" });
+  if (method === "CBE") {
+    await sendMessage(chatId, "🏦 Enter your CBE account number:");
   } else {
-    instructions = `📱 Withdraw via Telebirr\n\nName: Jane Doe\nPhone: +251900000000\n\n📋 Tap to copy the phone number.`;
-    pendingActions.set(userId, { type: "awaiting_withdraw_sms", amount, method: "Telebirr" });
+    await sendMessage(chatId, "📱 Enter your Telebirr phone number:");
   }
-
-  await sendMessage(chatId, instructions);
-  await sendMessage(chatId, "📩 Please forward the SMS receipt once the transfer is complete.");
   return;
 }
-  if (data.startsWith("decline_withdraw_")) {
-    const requestId = data.replace("decline_withdraw_", "");
-    const req = withdrawalRequests.get(requestId);
-    if (!req) return;
 
-    // Notify player
-    await sendMessage(req.userId, "❌ Your withdrawal request was declined.");
+// ✅ Approve withdraw
+if (data.startsWith("approve_withdraw_")) {
+  const requestId = data.replace("approve_withdraw_", "");
+  const req = withdrawalRequests.get(requestId);
+  if (!req) return;
 
-    // Notify admin
-    await sendMessage(chatId, `❌ You declined withdraw request for @${req.userId}, amount: ${req.amount}`);
+  const userRef = ref(rtdb, "users/" + req.userId);
+  const snap = await get(userRef);
+  if (snap.exists()) {
+    const user = snap.val();
+    const newBalance = (user.balance || 0) - req.amount;
+    await update(userRef, { balance: newBalance });
 
-    withdrawalRequests.delete(requestId);
+    await sendMessage(req.userId, `✅ Withdrawal approved!\n-${req.amount} birr sent to ${req.method}: ${req.account}`);
+    await sendMessage(chatId, `✅ You approved withdrawal for @${user.username || req.userId}, amount: ${req.amount}`);
   }
+
+  withdrawalRequests.delete(requestId);
+}
+
+// ❌ Reject withdraw
+if (data.startsWith("decline_withdraw_")) {
+  const requestId = data.replace("decline_withdraw_", "");
+  const req = withdrawalRequests.get(requestId);
+  if (!req) return;
+
+  await sendMessage(req.userId, "❌ Your withdrawal was rejected.");
+  await sendMessage(chatId, `❌ You rejected withdrawal for @${req.userId}, amount: ${req.amount}`);
+
+  withdrawalRequests.delete(requestId);
+}
 
   telegram("answerCallbackQuery", { callback_query_id: callbackQuery.id });
 }

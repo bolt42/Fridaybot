@@ -274,25 +274,7 @@ await sendMessage(
       const user = snap.val();
       const newBalance = (user.balance || 0) - req.amount;
       await update(userRef, { balance: newBalance });
-  if (data === "withdraw_cbe" || data === "withdraw_telebirr") {
-  const pending = pendingActions.get(userId);
-  if (!pending || pending.type !== "awaiting_withdraw_method") return;
-
-  const amount = pending.amount;
-  let instructions = "";
-
-  if (data === "withdraw_cbe") {
-    instructions = `🏦 Withdraw via CBE\n\nAccount: 1000123456789\nName: John Doe\n\n📋 Tap to copy the account number.`;
-    pendingActions.set(userId, { type: "awaiting_withdraw_sms", amount, method: "CBE" });
-  } else {
-    instructions = `📱 Withdraw via Telebirr\n\nName: Jane Doe\nPhone: +251900000000\n\n📋 Tap to copy the phone number.`;
-    pendingActions.set(userId, { type: "awaiting_withdraw_sms", amount, method: "Telebirr" });
-  }
-
-  await sendMessage(chatId, instructions);
-  await sendMessage(chatId, "📩 Please forward the SMS receipt once the transfer is complete.");
-  return;
-}
+ 
  // ====================== withdraw sms step ======================
 if (pending?.type === "awaiting_withdraw_sms") {
   const url = extractUrlFromText(text);
@@ -344,7 +326,25 @@ await sendMessage(
 
     withdrawalRequests.delete(requestId);
   }
+   if (data === "withdraw_cbe" || data === "withdraw_telebirr") {
+  const pending = pendingActions.get(userId);
+  if (!pending || pending.type !== "awaiting_withdraw_method") return;
 
+  const amount = pending.amount;
+  let instructions = "";
+
+  if (data === "withdraw_cbe") {
+    instructions = `🏦 Withdraw via CBE\n\nAccount: 1000123456789\nName: John Doe\n\n📋 Tap to copy the account number.`;
+    pendingActions.set(userId, { type: "awaiting_withdraw_sms", amount, method: "CBE" });
+  } else {
+    instructions = `📱 Withdraw via Telebirr\n\nName: Jane Doe\nPhone: +251900000000\n\n📋 Tap to copy the phone number.`;
+    pendingActions.set(userId, { type: "awaiting_withdraw_sms", amount, method: "Telebirr" });
+  }
+
+  await sendMessage(chatId, instructions);
+  await sendMessage(chatId, "📩 Please forward the SMS receipt once the transfer is complete.");
+  return;
+}
   if (data.startsWith("decline_withdraw_")) {
     const requestId = data.replace("decline_withdraw_", "");
     const req = withdrawalRequests.get(requestId);

@@ -62,10 +62,16 @@ joinRoom: (roomId: string) => {
   onValue(roomRef, (snapshot) => {
     if (snapshot.exists()) {
       const updatedRoom = { id: roomId, ...snapshot.val() } as Room;
+       const currentRoom = get().currentRoom;
+      if (!currentRoom || currentRoom.id !== roomId) {
+        set({ selectedCard: null });
+      }
+
       set({ currentRoom: updatedRoom });
 
-      // ✅ Also fetch cards once room is set
+      // ✅ Fetch only this room's cards
       get().fetchBingoCards();
+      
     } else {
       set({ currentRoom: null });
     }
@@ -291,6 +297,11 @@ fetchBingoCards: () => {
         ? Object.entries(data).map(([id, value]: [string, any]) => ({ id, ...value }))
         : [];
       set({ bingoCards: cards });
+        const { user } = useAuthStore.getState();
+    if (user) {
+      const userCard = cards.find(c => c.claimedBy === user.telegramId);
+      set({ selectedCard: userCard || null });
+    }
     });
   }
 

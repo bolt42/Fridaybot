@@ -17,7 +17,7 @@ const Room: React.FC = () => {
   const [hasBet, setHasBet] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [gameMessage, setGameMessage] = useState('');
-const cardNumbers = selectedCard?.numbers ?? [];
+
 
   const cancelBet = useGameStore((state) => state.cancelBet);
 
@@ -145,7 +145,8 @@ const handleCancelBet = async () => {
     ]
   };
 
-  const displayedCard = selectedCard || demoCard;
+ const displayedCard = userCard || selectedCard || demoCard;
+ const cardNumbers = displayedCard?.numbers ?? [];
 
  return (
     <div className="min-h-screen bg-gradient-to-br from-purple-800 via-purple-900 to-blue-900 flex flex-col items-center p-2 text-white">

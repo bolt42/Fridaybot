@@ -29,6 +29,13 @@ const cardNumbers = selectedCard?.numbers ?? [];
     }
   }, [roomId, joinRoom]);
   React.useEffect(() => {
+    const userCard = bingoCards.find(
+      (card) => card.claimedBy === user?.telegramId
+    );
+
+    if (userCard) {
+      selectCard(userCard.id); // auto-select the user's card
+    }
     if (currentRoom?.gameStatus === 'countdown' && countdown > 0) {
       const timer = setInterval(() => {
         setCountdown(prev => {
@@ -42,7 +49,7 @@ const cardNumbers = selectedCard?.numbers ?? [];
       
       return () => clearInterval(timer);
     }
-  }, [currentRoom?.gameStatus, countdown]);
+  }, [currentRoom?.gameStatus, countdown,selectCard]);
 
   const handleCardSelect = (cardId: string) => {
     if (!hasBet) {

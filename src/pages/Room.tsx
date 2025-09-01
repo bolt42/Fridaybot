@@ -284,7 +284,7 @@ const handleCancelBet = async () => {
           : "bg-blue-600 hover:bg-blue-700 text-white" // Place Bet
       }`}
     >
-      {hasBet ? t("cancel_bet") : t("place_bet")}
+      {hasBet ? t("cancel_bet")+"card:"+displayedCard.serialNumber : t("place_bet")+"card:"+displayedCard.serialNumber}
     </button>
   </div>
 ) : (

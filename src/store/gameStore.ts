@@ -56,26 +56,57 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
   },
    
-  joinRoom: (roomId: string) => {
-    const { rooms } = get();
-    const room = rooms.find(r => r.id === roomId);
-    
-    if (room) {
-      set({ currentRoom: room });
-      
-      // Subscribe to room updates
-      const roomRef = ref(rtdb, 'rooms/' + roomId);
-      onValue(roomRef, (snapshot) => {
-        if (snapshot.exists()) {
-          const updatedRoom = { id: roomId, ...snapshot.val() } as Room;
-          set({ currentRoom: updatedRoom });
+joinRoom: (roomId: string) => {
+  const { rooms } = get();
+  const room = rooms.find(r => r.id === roomId);
+  if (room) {
+    set({ currentRoom: room });
+    const roomRef = ref(rtdb, 'rooms/' + roomId);
+
+    onValue(roomRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const updatedRoom = { id: roomId, ...snapshot.val() } as Room;
+        set({ currentRoom: updatedRoom });
+
+        // Start countdown only when enough players
+        if (
+          updatedRoom.players &&
+          Object.keys(updatedRoom.players).length >= 2 &&
+          updatedRoom.gameStatus === "waiting"
+        ) {
+          const countdownRef = ref(rtdb, `rooms/${roomId}`);
+          update(countdownRef, { gameStatus: "countdown", countdown: 30 });
+
+          let sec = 30;
+          const timer = setInterval(async () => {
+            sec--;
+            await update(countdownRef, { countdown: sec });
+            if (sec <= 0) {
+              clearInterval(timer);
+              await update(countdownRef, { gameStatus: "playing" });
+
+              // ✅ Deduct balance when game actually starts
+              const { players, betAmount } = updatedRoom;
+              for (const pid in players) {
+                const player = players[pid];
+                const userRef = ref(rtdb, `users/${player.id}/balance`);
+                get(userRef).then(snap => {
+                  if (snap.exists()) {
+                    const bal = snap.val() || 0;
+                    update(userRef, bal - betAmount);
+                  }
+                });
+              }
+            }
+          }, 1000);
         }
-      });
-      
-      // Generate bingo cards
-       get().fetchBingoCards();
-    }
-  },
+      }
+    });
+
+    get().fetchBingoCards();
+  }
+},
+
   
   selectCard: (cardId: string) => {
     const { bingoCards } = get();
@@ -87,53 +118,53 @@ export const useGameStore = create<GameState>((set, get) => ({
   
 placeBet: async () => {
   const { currentRoom, selectedCard } = get();
-  const { user } = useAuthStore.getState(); // ✅ logged-in user
-
+  const { user } = useAuthStore.getState();
   if (!currentRoom || !selectedCard || !user) return false;
 
+  if ((user.balance || 0) < currentRoom.betAmount) {
+    alert("Insufficient balance!");
+    return false;
+  }
+
   try {
-    // ✅ Mark card as claimed locally
-    const updatedCard = { ...selectedCard, claimed: true, claimedBy: user.id };
-    set({
-      selectedCard: updatedCard,
-      bingoCards: get().bingoCards.map((c) =>
-        c.id === updatedCard.id ? updatedCard : c
-      ),
-    });
+    // ✅ Mark card as claimed in room
+    const cardRef = ref(rtdb, `rooms/${currentRoom.id}/bingoCards/${selectedCard.id}`);
+    await update(cardRef, { claimed: true, claimedBy: user.id });
 
-    // ✅ Build bet object
-    const betId = `${currentRoom.id}_${user.id}_${Date.now()}`;
-    const betData = {
-      betId,
-      playerId: user.id,
-      username: user.username,
-      cardId: updatedCard.id,
-      roomId: currentRoom.id,
-      gameId: currentRoom.id, // 🔹 replace with actual gameId if separate
-      betAmount: currentRoom.betAmount,
-      timestamp: Date.now(),
-    };
-
-    // ✅ Save bet under room
-    const betRef = ref(rtdb, `rooms/${currentRoom.id}/bets/${user.id}`);
-    await fbset(betRef, betData);
-
-    // ✅ Add player into room’s players list
+    // ✅ Add player to room
     const playerRef = ref(rtdb, `rooms/${currentRoom.id}/players/${user.id}`);
     await fbset(playerRef, {
       id: user.id,
       username: user.username,
       betAmount: currentRoom.betAmount,
-      cardId: updatedCard.id,
+      cardId: selectedCard.id,
     });
 
-    // ✅ (Optional) Central bets table
-    const globalBetRef = ref(rtdb, `bets/${betId}`);
-    await fbset(globalBetRef, betData);
-
     return true;
-  } catch (error) {
-    console.error("❌ Error recording bet:", error);
+  } catch (err) {
+    console.error("❌ Error placing bet:", err);
+    return false;
+  }
+},
+cancelBet: async () => {
+  const { currentRoom, selectedCard } = get();
+  const { user } = useAuthStore.getState();
+  if (!currentRoom || !selectedCard || !user) return false;
+
+  try {
+    // ✅ Unclaim card
+    const cardRef = ref(rtdb, `rooms/${currentRoom.id}/bingoCards/${selectedCard.id}`);
+    await update(cardRef, { claimed: false, claimedBy: null });
+
+    // ✅ Remove from players list
+    const playerRef = ref(rtdb, `rooms/${currentRoom.id}/players/${user.id}`);
+    await update(playerRef, null);
+
+    // ✅ Reset locally
+    set({ selectedCard: null });
+    return true;
+  } catch (err) {
+    console.error("❌ Error canceling bet:", err);
     return false;
   }
 },

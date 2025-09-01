@@ -138,8 +138,9 @@ const cardNumbers = selectedCard?.numbers ?? [];
     {t('payout')}: {Math.floor(currentRoom.currentPlayers * currentRoom.betAmount * 0.9)}
   </div>
   <div className="bg-white/10 rounded text-center py-1 border border-white/20">
-    Bonus: 00 {/* add to translations if needed */}
-  </div>
+  {t('game_status')}: {currentRoom?.gameStatus ?? t('waiting')}
+</div>
+
   <div className="bg-white/10 rounded text-center py-1 border border-white/20">
     {t('players')}: {currentRoom.currentPlayers}
   </div>
@@ -257,16 +258,23 @@ const cardNumbers = selectedCard?.numbers ?? [];
   <div className="mt-6">
     {/* Bet button */}
     <button
-      onClick={handlePlaceBet}   // ✅ use your handler, not placeBet directly
-      disabled={hasBet || selectedCard.claimed} // prevent double bet
-      className={`mt-4 px-4 py-2 rounded-lg shadow font-semibold ${
-        hasBet || selectedCard.claimed
-          ? "bg-gray-500 cursor-not-allowed"
-          : "bg-blue-600 hover:bg-blue-700 text-white"
-      }`}
-    >
-      {hasBet ? t('bet_placed') : t('place_bet')}
-    </button>
+  onClick={hasBet ? handleCancelBet : handlePlaceBet}
+  disabled={selectedCard?.claimed && !hasBet}
+  className={`mt-4 px-4 py-2 rounded-lg shadow font-semibold ${
+    currentRoom?.gameStatus === "countdown" && hasBet
+      ? "bg-red-600 hover:bg-red-700 text-white"
+      : hasBet
+      ? "bg-gray-500 cursor-not-allowed"
+      : "bg-blue-600 hover:bg-blue-700 text-white"
+  }`}
+>
+  {currentRoom?.gameStatus === "countdown" && hasBet
+    ? t("cancel_bet")
+    : hasBet
+    ? t("bet_placed")
+    : t("place_bet")}
+</button>
+
   </div>
 ) : (
   <p className="mt-6 text-gray-400">No card selected yet...</p>

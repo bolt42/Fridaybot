@@ -16,15 +16,17 @@ welcome:
 choose_lang: "🌍 Please choose your language:",
 play: "🎉 Let’s play Bingo!",
 enter_deposit_amount : "Enter amount to Deposit",
-deposit_method: "Choose payment method /ቋንቋ ይምረጡ:",
+deposit_method: "Choose payment method :",
 deposit_amount: (method) => `Enter deposit amount for ${method}:`,
 deposit_sms: (method) => `📩 Please forward the ${method} SMS receipt (with the payment link).`,
 withdraw_amount: "💵 Enter withdrawal amount:",
+select_withdraw_method : "Choose payment method:",
 withdraw_method: "Select withdrawal method:",
 withdraw_cbe: "🏦 Enter your CBE account number:",
 withdraw_telebirr: "📱 Enter your Telebirr phone number:",
 invalid_amount: "❌ Invalid amount, try again.",
 insufficient_balance: "❌ Insufficient balance.",
+enter_cbe :"Please Enter you CBE account number :",
 no_link: "❌ No link found. Please resend SMS.",
 link_used: "⚠️ This receipt/link has already been used. Please send a valid one.",
 wait_admin: "⏳ Request sent. Please wait for admin approval.",
@@ -33,17 +35,33 @@ declined_deposit: "❌ Your deposit was declined.",
 approved_withdraw: (amt, acc) => `✅ Withdraw approved!\n-${amt} birr paid to account: ${acc}\n\n🎮 You can continue playing anytime:\n/playgame`,
 declined_withdraw: "❌ Your withdrawal was rejected.",
 fallback: "Send /deposit or /withdraw to start.",
+send_deposit_sms: "📩 Please forward the payment SMS you received.",
+enter_telebirr : "Please Enter your Telebirr account Phone number :",
+withdraw_pending :"Withdraw pending ...",
+admin_declined_withdraw : "❌ Admin declined Request ! ",
+admin_approved_withdraw :  "✅ Admin approved Request ! ",
+admin_approved_deposit:  "✅ Admin approved Request ! ",
+admin_declined_deposit : "❌ Admin declined Request ! ",
+
 },
 am: {
-welcome:
-"🎯 Welcom to Friday Bingo!\n\nትዕዛዞች:\n/playgame - ጨዋታ ጀምር\n/deposit - ገንዘብ ጨምር\n/withdraw - ትርፍ ወስድ",
+welcome:"🎯 Welcom to Friday Bingo!\n\nትዕዛዞች:\n/playgame - ጨዋታ ጀምር\n/deposit - ገንዘብ ጨምር\n/withdraw - ትርፍ ወስድ",
 choose_lang: "🌍 ቋንቋ ይምረጡ:",
+admin_declined_withdraw : "❌ Admin ጥያቄውን አልተቀበለውም ! ",
+admin_approved_withdraw :  "✅ Admin ጥያቄ ጸድቋል ! ",
+admin_approved_deposit:  "✅ Admin ጥያቄ ጸድቋል ! ",
+enter_telebirr: "እባክዎን የቴሌቢር ስልክ ቁጥር ያስገቡ፡-",
+withdraw_pending:"በመጠባበቅ ላይ ...",
+admin_declined_deposit : "❌ Admin declined Request ! ",
 play: "🎉 እንጀምር ቢንጎ!",
 enter_deposit_amount : "የተቀማጭ ገንዘብ መጠን ያስገቡ",
+send_deposit_sms: "📩 እባክዎ የተቀበሉትን የክፍያ SMS ያስገቡ",
 deposit_method: "የመክፈያ መንገድ ይምረጡ:",
 deposit_amount: (method) => `${method} በመክፈል የሚጨምሩትን መጠን ያስገቡ:`,
 deposit_sms: (method) => `📩 እባክዎ ${method} የክፍያ ኤስኤምኤስ (ከሊንኩ ጋር) ይላኩ።`,
 withdraw_amount: "💵 የሚወስዱትን መጠን ያስገቡ:",
+select_withdraw_method: "የመክፈያ መንገድ ይምረጡ:",
+enter_cbe : "እባክዎን CBE የባንክ ሂሳብ ቁጥርዎን ያስገቡ:",
 withdraw_method: "የመክፈያ መንገድ ይምረጡ:",
 withdraw_cbe: "🏦 የCBE መለያ ቁጥርዎን ያስገቡ:",
 withdraw_telebirr: "📱 የቴሌብር ስልክ ቁጥርዎን ያስገቡ:",
@@ -213,7 +231,7 @@ async function handleUserMessage(message) {
       amount 
     });
 
-    await sendMessage(chatId, t(lang, "forward_sms")(pending.method));
+    await sendMessage(chatId, t(lang, "send_deposit_sms")(pending.method));
     return;
   }
 

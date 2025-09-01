@@ -174,18 +174,24 @@ cancelBet: async () => {
   if (!selectedCard || !currentRoom || !user) return false;
 
   try {
-    // ✅ Unclaim the card (correct path!)
-    const cardRef = ref(rtdb, `rooms/${currentRoom.id}/bingoCards/${selectedCard.id}`);
+    // Unclaim the card
+    const cardRef = ref(
+      rtdb,
+      `rooms/${currentRoom.id}/bingoCards/${selectedCard.id}`
+    );
     await update(cardRef, {
       claimed: false,
       claimedBy: null,
     });
 
-    // ✅ Remove the player from the room
-    const playerRef = ref(rtdb, `rooms/${currentRoom.id}/players/${user.telegramId}`);
-    await fbset(playerRef, null); // or remove(playerRef) if imported
+    // Remove player from room
+    const playerRef = ref(
+      rtdb,
+      `rooms/${currentRoom.id}/players/${user.telegramId}`
+    );
+    await remove(playerRef); // ✅ safer than set(null)
 
-    // ✅ Reset local state
+    // Reset local state
     set({ selectedCard: null });
 
     return true;

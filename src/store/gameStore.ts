@@ -170,24 +170,29 @@ placeBet: async () => {
 },
 
 cancelBet: async () => {
-  const { selectedCard, currentRoom, user } = get();
-  if (!selectedCard || !currentRoom || !user) return false;
+  const { selectedCard, currentRoom } = get();
+  if (!selectedCard || !currentRoom) return false;
+
+  if (!selectedCard?.id) {
+    console.error("❌ Cancel bet failed: no selectedCard.id");
+    return false;
+  }
 
   try {
-    // Unclaim the card
-    const cardRef = ref(rtdb, `rooms/${currentRoom.id}/bingoCards/${selectedCard.id}`);
+    // ✅ Unclaim the card only
+    const cardRef = ref(
+      rtdb,
+      `rooms/${currentRoom.id}/bingoCards/${selectedCard.id}`
+    );
     await update(cardRef, {
       claimed: false,
       claimedBy: null,
     });
 
-    // Remove player entry
-    const playerRef = ref(rtdb, `rooms/${currentRoom.id}/players/${user.telegramId}`);
-    await remove(playerRef); // ✅ correct
-
-    // Reset local state
+    // ✅ Reset local state
     set({ selectedCard: null });
 
+    console.log("✅ Card unclaimed successfully");
     return true;
   } catch (err) {
     console.error("❌ Cancel bet failed:", err);

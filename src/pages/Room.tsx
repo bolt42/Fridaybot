@@ -131,26 +131,26 @@ const cardNumbers = selectedCard?.numbers ?? [];
   {/* Header Info */}
 {/* Header Info Dashboard */}
   <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 mb-3 w-full text-xs">
-    <div className="bg-white/10 rounded text-center py-1 border border-white/20">
-      Game: {currentRoom.id}
-    </div>
-    <div className="bg-white/10 rounded text-center py-1 border border-white/20">
-      Derash: {Math.floor(currentRoom.currentPlayers * currentRoom.betAmount * 0.9)}
-    </div>
-    <div className="bg-white/10 rounded text-center py-1 border border-white/20">
-      Bonus: 00
-    </div>
-    <div className="bg-white/10 rounded text-center py-1 border border-white/20">
-      Players: {currentRoom.currentPlayers}
-    </div>
-    <div className="bg-white/10 rounded text-center py-1 border border-white/20">
-      Bet: {currentRoom.betAmount}
-    </div>
-    <div className="bg-white/10 rounded text-center py-1 border border-white/20">
-      Call: {(currentRoom?.calledNumbers?.length ?? 0) > 0 ? currentRoom.calledNumbers!.at(-1) : "-"}
-
-    </div>
+  <div className="bg-white/10 rounded text-center py-1 border border-white/20">
+    {t('room_details')}: {currentRoom.id}
   </div>
+  <div className="bg-white/10 rounded text-center py-1 border border-white/20">
+    {t('payout')}: {Math.floor(currentRoom.currentPlayers * currentRoom.betAmount * 0.9)}
+  </div>
+  <div className="bg-white/10 rounded text-center py-1 border border-white/20">
+    Bonus: 00 {/* add to translations if needed */}
+  </div>
+  <div className="bg-white/10 rounded text-center py-1 border border-white/20">
+    {t('players')}: {currentRoom.currentPlayers}
+  </div>
+  <div className="bg-white/10 rounded text-center py-1 border border-white/20">
+    {t('bet_amount')}: {currentRoom.betAmount}
+  </div>
+  <div className="bg-white/10 rounded text-center py-1 border border-white/20">
+    {t('numbers_called')}: {(currentRoom?.calledNumbers?.length ?? 0) > 0 ? currentRoom.calledNumbers!.at(-1) : "-"}
+  </div>
+</div>
+
 
   {/* Main content in one row */}
   <div className="flex flex-row gap-2 w-full max-w-full">
@@ -205,7 +205,7 @@ const cardNumbers = selectedCard?.numbers ?? [];
     {/* Your Card */}
 <div className="flex-1 bg-white/10 p-2 rounded border border-white/20 text-xs">
   <div className="flex justify-between items-center mb-1">
-    <h3 className="font-bold text-sm">Your Card</h3>
+   <h3 className="font-bold text-sm">{t('select_card')}</h3>
 <select
   value={selectedCard?.id ?? ''}
   onChange={(e) => selectCard(e.target.value)}
@@ -265,7 +265,7 @@ const cardNumbers = selectedCard?.numbers ?? [];
           : "bg-blue-600 hover:bg-blue-700 text-white"
       }`}
     >
-      {hasBet ? "Bet Placed" : "Place Bet "}
+      {hasBet ? t('bet_placed') : t('place_bet')}
     </button>
   </div>
 ) : (
@@ -277,16 +277,16 @@ const cardNumbers = selectedCard?.numbers ?? [];
 
   {/* Bottom buttons */}
   <div className="flex flex-row gap-2 mt-3 w-full">
-    <button className="flex-1 bg-gradient-to-r from-orange-500 to-yellow-500 py-2 rounded font-bold text-sm shadow hover:opacity-90 transition">
-      BINGO!
-    </button>
-    <button className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-500 py-2 rounded font-bold text-sm shadow hover:opacity-90 transition">
-      Refresh
-    </button>
-    <button className="flex-1 bg-gradient-to-r from-red-500 to-pink-500 py-2 rounded font-bold text-sm shadow hover:opacity-90 transition">
-      Leave
-    </button>
-  </div>
+  <button className="flex-1 bg-gradient-to-r from-orange-500 to-yellow-500 py-2 rounded font-bold text-sm shadow hover:opacity-90 transition">
+    {t('bingo')}
+  </button>
+  <button className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-500 py-2 rounded font-bold text-sm shadow hover:opacity-90 transition">
+    {t('refresh')}
+  </button>
+  <button className="flex-1 bg-gradient-to-r from-red-500 to-pink-500 py-2 rounded font-bold text-sm shadow hover:opacity-90 transition">
+    {t('leave')}
+  </button>
+</div>
   {/* Footer: Betted Players */}
 <div className="w-full mt-6 bg-white/10 rounded border border-white/20 p-3">
   <h3 className="font-bold text-sm mb-2">Players in this room</h3>

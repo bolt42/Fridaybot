@@ -177,7 +177,8 @@ const handleCancelBet = async () => {
   {/* Main content in one row */}
 <div className="flex flex-row gap-2 w-full max-w-full">
  {/* Left side = 40% (Called numbers + Current call) */}
-<div className="w-2/5 bg-white/10 p-2 rounded border border-white/20 text-xs">
+{/* Left side = 40% (Called numbers + Current call) */}
+<div className="w-2/5 h-full flex flex-col bg-white/10 p-2 rounded border border-white/20 text-xs">
   {/* Bingo Header Row */}
   <div className="grid grid-cols-5 gap-1 mb-1">
     {["B", "I", "N", "G", "O"].map((letter) => (
@@ -191,7 +192,7 @@ const handleCancelBet = async () => {
   </div>
 
   {/* Numbers Grid */}
-  <div className="grid grid-cols-5 gap-1">
+  <div className="grid grid-cols-5 gap-1 flex-1">
     {[...Array(15)].map((_, rowIdx) =>
       ["B", "I", "N", "G", "O"].map((col, colIdx) => {
         const num = rowIdx + 1 + colIdx * 15;
@@ -200,7 +201,7 @@ const handleCancelBet = async () => {
         return (
           <div
             key={`${col}-${num}`}
-            className={`w-8 h-8 flex items-center justify-center rounded font-bold text-[11px] transition
+            className={`flex items-center justify-center rounded font-bold text-[11px] transition
               ${isCalled ? "bg-green-500 text-white scale-105" : "bg-white/20"}
             `}
           >
@@ -211,6 +212,7 @@ const handleCancelBet = async () => {
     )}
   </div>
 </div>
+
 
 
     {/* Current Call */}

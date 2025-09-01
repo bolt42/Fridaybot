@@ -170,33 +170,31 @@ placeBet: async () => {
 },
 
 cancelBet: async () => {
-  const { currentRoom, selectedCard } = get();
-  const { user } = useAuthStore.getState();
-  if (!currentRoom || !selectedCard || !user) return false;
-
-  const userId = user.telegramId;
-  if (!userId) {
-    console.error("❌ No valid telegramId for user:", user);
-    return false;
-  }
+  const { selectedCard, currentRoom, user } = get();
+  if (!selectedCard || !currentRoom || !user) return false;
 
   try {
-    // ✅ Unclaim card
-    const cardRef = ref(rtdb, `rooms/${currentRoom.id}/bingoCards/${selectedCard.id}`);
-    await update(cardRef, { claimed: false, claimedBy: null });
+    // ✅ Unclaim the card
+    const cardRef = ref(rtdb, `cards/${selectedCard.id}`);
+    await update(cardRef, {
+      claimed: false,
+      claimedBy: null,
+    });
 
-    // ✅ Remove from players list
-    const playerRef = ref(rtdb, `rooms/${currentRoom.id}/players/${userId}`);
-    await update(playerRef, null);
+    // ✅ Remove from players
+    const playerRef = ref(rtdb, `rooms/${currentRoom.id}/players/${user.telegramId}`);
+    await remove(playerRef);
 
-    // ✅ Reset locally
+    // ✅ Reset local state
     set({ selectedCard: null });
+
     return true;
   } catch (err) {
-    console.error("❌ Error canceling bet:", err);
+    console.error("Cancel bet failed", err);
     return false;
   }
 },
+
   checkBingo: async () => {
     const { selectedCard, currentRoom } = get();
     if (!selectedCard || !currentRoom) return false;

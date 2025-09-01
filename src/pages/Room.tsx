@@ -44,7 +44,7 @@ const Room: React.FC = () => {
     selectCard(userCard.id); // auto-select the user's card
     setHasBet(true); // ✅ mark that the user already has a bet
   }
-  const hasbet = !!userCard;
+ 
     if (currentRoom?.gameStatus === 'countdown' && countdown > 0) {
       const timer = setInterval(() => {
         setCountdown(prev => {

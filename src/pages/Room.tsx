@@ -19,6 +19,14 @@ const Room: React.FC = () => {
   const [gameMessage, setGameMessage] = useState('');
 const cardNumbers = selectedCard?.numbers ?? [];
 
+  const cancelBet = useGameStore((state) => state.cancelBet);
+
+  const handleCancelBet = async () => {
+    const success = await cancelBet();
+    if (!success) {
+      console.error("❌ Failed to cancel bet");
+    }
+  };
 
   React.useEffect(() => {
     if (roomId) {

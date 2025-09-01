@@ -97,6 +97,7 @@ async function handleWithdraw(message) {
   pendingActions.set(message.from.id, { type: "awaiting_withdraw_amount" });
 }
 
+
 // ====================== STATE MACHINE ======================
 const pendingActions = new Map();
 const depositRequests = new Map();
@@ -136,55 +137,51 @@ async function handleUserMessage(message) {
 
   // ====================== deposit sms step ======================
   if (pending?.type === "awaiting_deposit_sms") {
-    const url = extractUrlFromText(text);
-    if (!url) {
-      await sendMessage(chatId, "❌ No link found. Please resend SMS.");
-      return;
-    }
-
-    // 🔍 Check if link already used
-    const depositsRef = ref(rtdb, "deposits");
-    const snapshot = await get(depositsRef);
-    if (snapshot.exists()) {
-      const deposits = snapshot.val();
-      const alreadyUsed = Object.values(deposits).some(dep => dep.url === url);
-      if (alreadyUsed) {
-        await sendMessage(chatId, "❌ This receipt has already been used.");
-        pendingActions.delete(userId);
-        return;
-      }
-    }
-
-    // Create new request
-    const requestId = `dep_${userId}_${Date.now()}`;
-    depositRequests.set(requestId, { 
-      userId, 
-      amount: pending.amount, 
-      url, 
-      method: pending.method, 
-      status: "pending" 
-    });
-
-    ADMIN_IDS.forEach(adminId => {
-      const keyboard = {
-        inline_keyboard: [
-          [
-            { text: "✅ Approve", callback_data: `approve_deposit_${requestId}` },
-            { text: "❌ Decline", callback_data: `decline_deposit_${requestId}` },
-          ],
-        ],
-      };
-      sendMessage(
-        adminId, 
-        `💵 Deposit request:\n👤 @${user.username || userId}\nMethod: ${pending.method}\nAmount: ${pending.amount}\n🔗 Link: ${url}`, 
-        { reply_markup: keyboard }
-      );
-    });
-
-    await sendMessage(chatId, "⏳ Deposit request sent. Please wait for admin approval.");
-    pendingActions.delete(userId);
+  const url = extractUrlFromText(text);
+  if (!url) {
+    await sendMessage(chatId, "❌ No link found. Please resend SMS.");
     return;
   }
+
+  // 🔹 Save both SMS text and URL
+  const requestId = `dep_${userId}_${Date.now()}`;
+  depositRequests.set(requestId, { 
+    userId, 
+    amount: pending.amount, 
+    url, 
+    smsText: text,   // <<-- full SMS
+    method: pending.method, 
+    status: "pending" 
+  });
+
+  ADMIN_IDS.forEach(adminId => {
+    const keyboard = {
+      inline_keyboard: [
+        [
+          { text: "✅ Approve", callback_data: `approve_deposit_${requestId}` },
+          { text: "❌ Decline", callback_data: `decline_deposit_${requestId}` },
+        ],
+      ],
+    };
+
+    // 🔹 Show SMS + extracted URL
+    sendMessage(
+      adminId, 
+      `💵 Deposit request:\n` +
+      `👤 @${user.username || userId}\n` +
+      `Method: ${pending.method}\n` +
+      `Amount: ${pending.amount}\n\n` +
+      `📩 SMS:\n${text}\n\n` +
+      `🔗 Extracted link: ${url}`, 
+      { reply_markup: keyboard }
+    );
+  });
+
+  await sendMessage(chatId, "⏳ Deposit request sent. Please wait for admin approval.");
+  pendingActions.delete(userId);
+  return;
+}
+
 
   // ====================== other commands ======================
   if (text === "/start") return handleStart(message);
@@ -225,13 +222,14 @@ async function handleCallback(callbackQuery) {
     const depositId = `dep_${Date.now()}`;
     const depositRef = ref(rtdb, `deposits/${depositId}`);
     await set(depositRef, {
-      userId: req.userId,
-      username: user.username || req.userId,
-      amount: req.amount,
-      url: req.url,
-      method: req.method,
-      date: new Date().toISOString(),
-    });
+  userId: req.userId,
+  username: user.username || req.userId,
+  amount: req.amount,
+  url: req.url,
+  smsText: req.smsText,   // <<-- store SMS
+  method: req.method,
+  date: new Date().toISOString(),
+});
 
     // Notify player
     // Notify player
@@ -276,6 +274,62 @@ await sendMessage(
       const user = snap.val();
       const newBalance = (user.balance || 0) - req.amount;
       await update(userRef, { balance: newBalance });
+  if (data === "withdraw_cbe" || data === "withdraw_telebirr") {
+  const pending = pendingActions.get(userId);
+  if (!pending || pending.type !== "awaiting_withdraw_method") return;
+
+  const amount = pending.amount;
+  let instructions = "";
+
+  if (data === "withdraw_cbe") {
+    instructions = `🏦 Withdraw via CBE\n\nAccount: 1000123456789\nName: John Doe\n\n📋 Tap to copy the account number.`;
+    pendingActions.set(userId, { type: "awaiting_withdraw_sms", amount, method: "CBE" });
+  } else {
+    instructions = `📱 Withdraw via Telebirr\n\nName: Jane Doe\nPhone: +251900000000\n\n📋 Tap to copy the phone number.`;
+    pendingActions.set(userId, { type: "awaiting_withdraw_sms", amount, method: "Telebirr" });
+  }
+
+  await sendMessage(chatId, instructions);
+  await sendMessage(chatId, "📩 Please forward the SMS receipt once the transfer is complete.");
+  return;
+}
+ // ====================== withdraw sms step ======================
+if (pending?.type === "awaiting_withdraw_sms") {
+  const url = extractUrlFromText(text);
+  if (!url) {
+    await sendMessage(chatId, "❌ No link found. Please resend SMS.");
+    return;
+  }
+
+  const requestId = `wd_${userId}_${Date.now()}`;
+  withdrawalRequests.set(requestId, {
+    userId,
+    amount: pending.amount,
+    method: pending.method,
+    url,
+    status: "pending"
+  });
+
+  ADMIN_IDS.forEach(adminId => {
+    const keyboard = {
+      inline_keyboard: [
+        [
+          { text: "✅ Approve", callback_data: `approve_withdraw_${requestId}` },
+          { text: "❌ Decline", callback_data: `decline_withdraw_${requestId}` },
+        ],
+      ],
+    };
+    sendMessage(
+      adminId,
+      `💵 Withdrawal request:\n👤 @${user.username || userId}\nMethod: ${pending.method}\nAmount: ${pending.amount}\n🔗 Receipt: ${url}`,
+      { reply_markup: keyboard }
+    );
+  });
+
+  await sendMessage(chatId, "⏳ Withdrawal request sent. Please wait for admin approval.");
+  pendingActions.delete(userId);
+  return;
+}
 
       // Notify player
      // Notify player

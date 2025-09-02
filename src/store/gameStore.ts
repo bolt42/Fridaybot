@@ -84,27 +84,26 @@ joinRoom: (roomId: string) => {
   const countdownRef = ref(rtdb, `rooms/${roomId}`);
 
   // ❌ Cancel stale countdown if <2 players
-  if (
-    activePlayers.length < 2 &&
-    updatedRoom.gameStatus === "countdown" &&
-    updatedRoom.countdown
-  ) {
-    (async () => {
-       update(countdownRef, {
-        gameStatus: "waiting",
-        countdown: null,
-        countdownStartedBy: null,
-      });
-    })();
-    return;
-  }
+if (
+  activePlayers.length < 2 &&
+  updatedRoom.gameStatus === "countdown" &&
+  updatedRoom.countdownEndAt > Date.now()
+) {
+  (async () => {
+    await update(countdownRef, {
+      gameStatus: "waiting",
+      countdownEndAt: null,
+      countdownStartedBy: null,
+    });
+  })();
+  return;
+}
 
-  // ✅ Only start countdown if 2+ players are ACTIVE (have bet & card)
-  //    AND no one has already locked ownership
-  if (
+// ✅ Start countdown if 2+ active players, room waiting, and no countdown in progress
+if (
   activePlayers.length >= 2 &&
   updatedRoom.gameStatus === "waiting" &&
-  !updatedRoom.countdownEndAt &&
+  (!updatedRoom.countdownEndAt || updatedRoom.countdownEndAt < Date.now()) &&
   !updatedRoom.countdownStartedBy
 ) {
   const { user } = useAuthStore.getState();
@@ -113,7 +112,7 @@ joinRoom: (roomId: string) => {
   const countdownDuration = 30 * 1000; // 30s
   const countdownEndAt = Date.now() + countdownDuration;
 
- update(countdownRef, {
+  update(countdownRef, {
     gameStatus: "countdown",
     countdownEndAt,
     countdownStartedBy: user.telegramId,

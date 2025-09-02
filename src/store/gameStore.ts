@@ -71,38 +71,50 @@ joinRoom: (roomId: string) => {
 
       // ✅ Start countdown only when enough players & still waiting
       if (
-        updatedRoom.players &&
-        Object.keys(updatedRoom.players).length >= 2 &&
-        updatedRoom.gameStatus === "waiting"
-      ) {
-        const countdownRef = ref(rtdb, `rooms/${roomId}`);
-        update(countdownRef, { gameStatus: "countdown", countdown: 30 });
+  updatedRoom.players &&
+  Object.keys(updatedRoom.players).length >= 2 &&
+  updatedRoom.gameStatus === "waiting"
+) {
+  const { user } = useAuthStore.getState();
+  const starterId = user?.telegramId;
 
-        let sec = 30;
-        const timer = setInterval(async () => {
-          sec--;
-          await update(countdownRef, { countdown: sec });
+  if (!starterId) return;
 
-          if (sec <= 0) {
-            clearInterval(timer);
-            await update(countdownRef, { gameStatus: "playing" });
+  const countdownRef = ref(rtdb, `rooms/${roomId}`);
 
-            // ✅ Deduct balance when game actually starts
-            const { players, betAmount } = updatedRoom;
-            for (const pid in players) {
-              const player = players[pid];
-              const userBalanceRef = ref(rtdb, `users/${player.id}/balance`);
-              get(userBalanceRef).then((snap) => {
-                if (snap.exists()) {
-                  const bal = snap.val() || 0;
-                  update(userBalanceRef, bal - betAmount);
-                }
-              });
+  // Only start if no one started it already
+  if (!updatedRoom.countdown && !updatedRoom.countdownStartedBy) {
+    await update(countdownRef, { 
+      gameStatus: "countdown", 
+      countdown: 30, 
+      countdownStartedBy: starterId 
+    });
+
+    let sec = 30;
+    const timer = setInterval(async () => {
+      sec--;
+      await update(countdownRef, { countdown: sec });
+
+      if (sec <= 0) {
+        clearInterval(timer);
+        await update(countdownRef, { gameStatus: "playing" });
+
+        const { players, betAmount } = updatedRoom;
+        for (const pid in players) {
+          const player = players[pid];
+          const userBalanceRef = ref(rtdb, `users/${player.id}/balance`);
+          get(userBalanceRef).then((snap) => {
+            if (snap.exists()) {
+              const bal = snap.val() || 0;
+              fbset(userBalanceRef, bal - betAmount); // ✅ fix here
             }
-          }
-        }, 1000);
+          });
+        }
       }
-    } else {
+    }, 1000);
+  }
+}
+ else {
       set({ currentRoom: null });
     }
   });

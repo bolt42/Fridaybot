@@ -159,16 +159,18 @@ startGameIfCountdownEnded: async () => {
       room.countdownStartedBy = null;
 
       // Create game entry
-      set(ref(rtdb, `games/${gameId}`), {
-        id: gameId,
-        roomId: room.id,
-        bingoCards: activeCards,
-        winners: [],
-        drawnNumbers: [],
-        createdAt: Date.now(),
-        status: "playing",
-        amount: totalAmount,
-      });
+     // ✅ Use Firebase set
+fbset(ref(rtdb, `games/${gameId}`), {
+  id: gameId,
+  roomId: room.id,
+  bingoCards: activeCards,
+  winners: [],
+  drawnNumbers: [],
+  createdAt: Date.now(),
+  status: "playing",
+  amount: totalAmount,
+});
+
 
       return room;
     });

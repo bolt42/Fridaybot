@@ -157,7 +157,7 @@ const isBetActive = hasBet || alreadyBetted;
 
 
 return (
-  <div className="min-h-screen bg-gradient-to-br from-purple-800 via-purple-900 to-blue-900 flex flex-col items-center p-2 text-white">
+  <div className=" min-h-screen bg-gradient-to-br from-purple-800 via-purple-900 to-blue-900 flex flex-col items-center p-2 text-white">
     {/* Header Info Dashboard */}
     <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 mb-3 w-full text-xs">
       <div className="bg-white/10 rounded text-center py-1 border border-white/20">
@@ -184,15 +184,17 @@ return (
     <div className="flex flex-row gap-2 w-full max-w-full h-full">
 
       {/* Left side (Called numbers) */}
-      <div className="w-2/5 h-full flex flex-col bg-white/10 p-2 rounded border border-white/20 text-xs">
-      {currentRoom?.gameStatus === "countdown" && currentRoom.countdown && (
-  <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-    <div className="bg-white text-black rounded-xl p-6 text-center shadow-xl">
-      <h2 className="text-xl font-bold mb-2">Game starting soon</h2>
-      <p className="text-4xl font-mono">{currentRoom.countdown}s</p>
+     <div className="relative w-2/5 h-full flex flex-col bg-white/10 p-2 rounded border border-white/20 text-xs">
+  {currentRoom?.gameStatus === "countdown" && currentRoom.countdown && (
+    <div className="absolute inset-0 bg-black/70 flex items-center justify-center rounded">
+      <div className="bg-white text-black rounded-xl p-6 text-center shadow-xl">
+        <h2 className="text-xl font-bold mb-2">Game starting soon</h2>
+        <p className="text-4xl font-mono">{currentRoom.countdown}s</p>
+      </div>
     </div>
-  </div>
-)}
+  )}
+
+
         {/* Bingo Header */}
         <div className="grid grid-cols-5 gap-1 mb-1">
           {["B", "I", "N", "G", "O"].map((letter) => (

@@ -62,14 +62,17 @@ const Room: React.FC = () => {
   }, [userCard,currentRoom?.gameStatus, countdown,selectCard]);
   // Start countdown if 2+ players bet
 React.useEffect(() => {
-  const activePlayers = Object.values(currentRoom.players || {}).filter(
+  if (!currentRoom || !currentRoom.players) return; // ✅ guard against null
+
+  const activePlayers = Object.values(currentRoom.players).filter(
     (p: any) => p.betAmount && p.betAmount > 0
   );
 
   if (activePlayers.length >= 2 && countdown === 0) {
     setCountdown(30);
   }
-}, [currentRoom?.players, countdown]);
+}, [currentRoom, countdown]);
+
 
 // Countdown tick
 React.useEffect(() => {

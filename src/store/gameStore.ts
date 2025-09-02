@@ -40,6 +40,7 @@ interface GameState {
   placeBet: () => Promise<boolean>;
   checkBingo: () => Promise<boolean>;
   generateBingoCards: (count: number) => BingoCard[];
+  stopGame: (roomId: string) => Promise<boolean>; // ✅ Add stop game function
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -349,7 +350,7 @@ cancelBet: async (cardId?: string) => {
 
   return cards;
 },
-fetchBingoCards: () => {
+  fetchBingoCards: () => {
       const { currentRoom } = get();
   if (!currentRoom) return;
 
@@ -375,6 +376,30 @@ if (user) {
 }
 
     });
+  },
+
+  // ✅ Stop game function
+  stopGame: async (roomId: string) => {
+    try {
+      const res = await fetch("/api/start-game", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId, action: "stop" }),
+      });
+
+      const data = await res.json();
+      
+      if (!res.ok) {
+        console.error("❌ Failed to stop game:", data.error);
+        return false;
+      }
+
+      console.log("✅ Game stopped successfully:", data.message);
+      return true;
+    } catch (err) {
+      console.error("❌ Error stopping game:", err);
+      return false;
+    }
   }
 
 }));

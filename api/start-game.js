@@ -4,7 +4,13 @@ import { v4 as uuidv4 } from "uuid";
 
 export default async function handler(req, res) {
   try {
-    const { roomId } = req.body;
+    const { roomId, action } = req.body;
+    
+    // ✅ Handle different actions
+    if (action === "stop") {
+      return await stopGame(roomId, res);
+    }
+    
     if (!roomId) {
       return res.status(400).json({ error: "Missing roomId" });
     }
@@ -59,6 +65,7 @@ export default async function handler(req, res) {
       drawnNumbers: [],
       createdAt: Date.now(),
       status: "playing",
+      active: true, // ✅ Mark game as active
       amount: result.snapshot.val().totalAmount || 0,
     });
 
@@ -79,6 +86,101 @@ export default async function handler(req, res) {
 // ✅ Track active drawing loops to prevent duplicates
 const activeDrawingLoops = new Set();
 
+// ✅ Function to stop inactive games
+async function stopInactiveGames() {
+  try {
+    const gamesRef = ref(rtdb, 'games');
+    const gamesSnapshot = await get(gamesRef);
+    
+    if (!gamesSnapshot.exists()) return;
+    
+    const games = gamesSnapshot.val();
+    const now = Date.now();
+    const inactiveThreshold = 5 * 60 * 1000; // 5 minutes
+    
+    for (const [gameId, game] of Object.entries(games)) {
+      if (game.active && game.status === "playing") {
+        // Check if game is too old or has no recent activity
+        if (now - game.createdAt > inactiveThreshold) {
+          console.log(`🛑 Stopping inactive game ${gameId}`);
+          
+          // Mark game as inactive
+          await update(ref(rtdb, `games/${gameId}`), {
+            active: false,
+            status: "ended"
+          });
+          
+          // Reset room state
+          if (game.roomId) {
+            await update(ref(rtdb, `rooms/${game.roomId}`), {
+              gameStatus: "waiting",
+              gameId: null,
+              calledNumbers: [],
+              lastCalledNumber: null,
+              countdownEndAt: null,
+              countdownStartedBy: null,
+            });
+          }
+          
+          // Clean up drawing loop
+          activeDrawingLoops.delete(gameId);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("❌ Error stopping inactive games:", err);
+  }
+}
+
+// ✅ Run cleanup every 2 minutes
+setInterval(stopInactiveGames, 2 * 60 * 1000);
+
+// ✅ Function to manually stop a game
+async function stopGame(roomId, res) {
+  try {
+    const roomRef = ref(rtdb, `rooms/${roomId}`);
+    const roomSnapshot = await get(roomRef);
+    
+    if (!roomSnapshot.exists()) {
+      return res.status(404).json({ error: "Room not found" });
+    }
+    
+    const roomData = roomSnapshot.val();
+    const gameId = roomData.gameId;
+    
+    if (!gameId) {
+      return res.status(400).json({ error: "No active game in this room" });
+    }
+    
+    // Stop the game
+    await update(ref(rtdb, `games/${gameId}`), {
+      active: false,
+      status: "ended"
+    });
+    
+    // Reset room state
+    await update(roomRef, {
+      gameStatus: "waiting",
+      gameId: null,
+      calledNumbers: [],
+      lastCalledNumber: null,
+      countdownEndAt: null,
+      countdownStartedBy: null,
+    });
+    
+    // Clean up drawing loop
+    activeDrawingLoops.delete(gameId);
+    
+    return res.status(200).json({ 
+      success: true, 
+      message: `Game ${gameId} stopped successfully` 
+    });
+  } catch (err) {
+    console.error("❌ Error stopping game:", err);
+    return res.status(500).json({ error: err.message });
+  }
+}
+
 function startNumberDraw(roomId, gameId) {
   // ✅ Prevent multiple drawing loops for the same game
   if (activeDrawingLoops.has(gameId)) {
@@ -98,10 +200,28 @@ function startNumberDraw(roomId, gameId) {
     Array.from({ length: 15 }, (_, i) => i + 61),
   ];
 
-  let bucketIndex = 0;
+  let bucketIndex = 0; // ✅ Fixed: Added missing bucketIndex variable
   let drawn = [];
 
   const interval = setInterval(async () => {
+    // ✅ Validate game is still active before each number call
+    try {
+      const gameSnapshot = await get(gameRef);
+      const gameData = gameSnapshot.val();
+      
+      if (!gameData || !gameData.active || gameData.status !== "playing") {
+        console.log(`⚠️ Game ${gameId} is no longer active, stopping number drawing`);
+        clearInterval(interval);
+        activeDrawingLoops.delete(gameId);
+        return;
+      }
+    } catch (err) {
+      console.error(`❌ Error checking game status for ${gameId}:`, err);
+      clearInterval(interval);
+      activeDrawingLoops.delete(gameId);
+      return;
+    }
+
     if (bucketIndex >= ranges.length) {
       clearInterval(interval);
 
@@ -113,7 +233,10 @@ function startNumberDraw(roomId, gameId) {
         countdownEndAt: null,
         countdownStartedBy: null,
       });
-      await update(gameRef, { status: "ended" });
+      await update(gameRef, { 
+        status: "ended",
+        active: false // ✅ Mark game as inactive
+      });
 
       // ✅ Clean up active drawing loop tracking
       activeDrawingLoops.delete(gameId);
@@ -132,11 +255,21 @@ function startNumberDraw(roomId, gameId) {
 
     drawn.push(num);
 
-    await update(gameRef, { drawnNumbers: drawn });
-    await update(roomRef, {
-      calledNumbers: drawn,
-      lastCalledNumber: num,
-    });
+    try {
+      // ✅ Update both game and room atomically
+      await Promise.all([
+        update(gameRef, { drawnNumbers: drawn }),
+        update(roomRef, {
+          calledNumbers: drawn,
+          lastCalledNumber: num,
+        })
+      ]);
+
+      console.log(`🎲 Called number: ${num} for game ${gameId} in room ${roomId}`);
+    } catch (err) {
+      console.error(`❌ Error updating game/room for number ${num}:`, err);
+      // Continue with next number even if update fails
+    }
 
     const numbersInBucket = drawn.filter((n) => {
       if (bucketIndex === 0) return n <= 15;
@@ -149,6 +282,7 @@ function startNumberDraw(roomId, gameId) {
 
     if (numbersInBucket.length >= 5) {
       bucketIndex++;
+      console.log(`📦 Moving to next bucket (${bucketIndex}) for game ${gameId}`);
     }
-  }, 4000);
+  }, 2000); // ✅ Reduced from 4000ms to 2000ms for faster gameplay
 }

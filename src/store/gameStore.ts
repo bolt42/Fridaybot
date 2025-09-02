@@ -117,61 +117,33 @@ drawNumbersLoop: () => {
     }
   }, 4000); // every 4s
 },
-
 startGameIfCountdownEnded: async () => {
-  const { currentRoom, bingoCards } = get();
+  const { currentRoom } = get();
   if (!currentRoom) return;
 
-  // Only proceed if countdown is over
   if (currentRoom.gameStatus !== "countdown" || !currentRoom.countdownEndAt) return;
   if (Date.now() < currentRoom.countdownEndAt) return;
 
-  const roomRef = ref(rtdb, `rooms/${currentRoom.id}`);
-  const gamesRef = ref(rtdb, "games");
-  if (currentRoom.gameId) {
-  console.log("⚠️ Game already exists:", currentRoom.gameId);
-  return;
-}
-  // ✅ Check if a game is already active for this room
-  if (currentRoom.gameId && currentRoom.gameStatus === "playing") {
-    console.log("⚠️ A game is already active for this room:", currentRoom.gameId);
-    return;
+  try {
+    const res = await fetch("/api/start-game", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roomId: currentRoom.id }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      console.error("❌ Failed to start game:", data.error);
+      return;
+    }
+
+    console.log("✅ Game created on server:", data.gameId);
+
+    // ✅ Start local number drawing loop
+    get().drawNumbersLoop();
+  } catch (err) {
+    console.error("❌ Error calling start-game API:", err);
   }
-
-  // ✅ collect claimed cards
-  const activeCards = bingoCards.filter(c => c.claimed);
-
-  // ✅ total payout
-  const totalAmount = activeCards.length * currentRoom.betAmount * 0.9;
-
-  // ✅ create new game
-  const newGameRef = push(gamesRef);
-  const gameId = newGameRef.key;
-
-  const gameData = {
-    id: gameId,
-    roomId: currentRoom.id,
-    bingoCards: activeCards,
-    winners: [],
-    drawnNumbers: [],
-    createdAt: Date.now(),
-    status: "playing",
-    amount: totalAmount,
-  };
-
-  // ✅ atomically update room + new game
-  await update(ref(rtdb), {
-    [`rooms/${currentRoom.id}/gameStatus`]: "playing",
-    [`rooms/${currentRoom.id}/gameId`]: gameId,
-    [`rooms/${currentRoom.id}/countdownStartedBy`]: null,
-    [`rooms/${currentRoom.id}/countdownEndAt`]: null,
-    [`games/${gameId}`]: gameData,
-  });
-
-  // ✅ start number drawing process
-  get().drawNumbersLoop();
-
-  console.log("✅ Game started:", gameData);
 },
 
 

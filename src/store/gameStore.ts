@@ -23,7 +23,7 @@ interface Room {
   calledNumbers: number[];
   winner?: string;
   payout?: number;
-  countdown?: number; 
+  countdownEndAt: number, 
   players?: { [id: string]: { id: string; username: string; betAmount: number; cardId: string } };
 }
 interface GameState {
@@ -90,7 +90,7 @@ joinRoom: (roomId: string) => {
     updatedRoom.countdown
   ) {
     (async () => {
-      await update(countdownRef, {
+       update(countdownRef, {
         gameStatus: "waiting",
         countdown: null,
         countdownStartedBy: null,
@@ -102,81 +102,24 @@ joinRoom: (roomId: string) => {
   // ✅ Only start countdown if 2+ players are ACTIVE (have bet & card)
   //    AND no one has already locked ownership
   if (
-    activePlayers.length >= 2 &&
-    updatedRoom.gameStatus === "waiting" &&
-    !updatedRoom.countdown &&
-    !updatedRoom.countdownStartedBy
-  ) {
-    const { user } = useAuthStore.getState();
-    if (!user?.telegramId) return;
+  activePlayers.length >= 2 &&
+  updatedRoom.gameStatus === "waiting" &&
+  !updatedRoom.countdownEndAt &&
+  !updatedRoom.countdownStartedBy
+) {
+  const { user } = useAuthStore.getState();
+  if (!user?.telegramId) return;
 
-    (async () => {
-      // 🔒 Lock ownership
-      await update(countdownRef, {
-        gameStatus: "countdown",
-        countdown: 30,
-        countdownStartedBy: user.telegramId,
-      });
+  const countdownDuration = 30 * 1000; // 30s
+  const countdownEndAt = Date.now() + countdownDuration;
 
-      let sec = 30;
+ update(countdownRef, {
+    gameStatus: "countdown",
+    countdownEndAt,
+    countdownStartedBy: user.telegramId,
+  });
+}
 
-      const timer = setInterval(async () => {
-  sec--;
-
-  try {
-    // 🔹 Directly get raw value
-    const latestRoom = await get(roomRef);
-
-    if (!latestRoom) {
-      clearInterval(timer);
-      return;
-    }
-
-    // ⛔ Stop if another client took over (ownership changed)
-    if (
-      latestRoom?.countdownStartedBy &&
-      latestRoom.countdownStartedBy !== user.telegramId
-    ) {
-      clearInterval(timer);
-      return;
-    }
-
-    const stillActivePlayers = latestRoom?.players
-      ? Object.values(latestRoom.players).filter(
-          (p: any) => p.betAmount && p.cardId
-        )
-      : [];
-
-    // ❌ Cancel countdown if fewer than 2 active players remain
-    if (stillActivePlayers.length < 2) {
-      clearInterval(timer);
-      await update(countdownRef, {
-        gameStatus: "waiting",
-        countdown: null,
-        countdownStartedBy: null,
-      });
-      return;
-    }
-
-    // ✅ Continue countdown
-    if (sec > 0) {
-      await update(countdownRef, { countdown: sec });
-    } else {
-      clearInterval(timer);
-      await update(countdownRef, {
-        gameStatus: "playing",
-        countdown: null,
-      });
-    }
-  } catch (err) {
-    console.error("❌ Countdown error:", err);
-    clearInterval(timer);
-  }
-}, 1000);
-
-
-    })();
-  }
 });
 },
 

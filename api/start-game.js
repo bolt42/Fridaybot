@@ -113,7 +113,7 @@ async function stopInactiveGames() {
           // Reset room state
           if (game.roomId) {
             await update(ref(rtdb, `rooms/${game.roomId}`), {
-              gameStatus: "waiting",
+              gameStatus: "ended",
               gameId: null,
               calledNumbers: [],
               lastCalledNumber: null,
@@ -155,18 +155,35 @@ async function stopGame(roomId, res) {
     // Stop the game
     await update(ref(rtdb, `games/${gameId}`), {
       active: false,
-      status: "ended"
+      status: "ended",
+      endedAt: Date.now()
     });
     
-    // Reset room state
+    // Mark room as ended with 3-minute countdown
     await update(roomRef, {
-      gameStatus: "waiting",
-      gameId: null,
-      calledNumbers: [],
-      lastCalledNumber: null,
-      countdownEndAt: null,
-      countdownStartedBy: null,
+      gameStatus: "ended",
+      gameEndedAt: Date.now(),
+      nextGameCountdown: Date.now() + (3 * 60 * 1000), // ✅ 3 minutes from now
     });
+    
+    // ✅ Start 3-minute countdown to reset room
+    setTimeout(async () => {
+      try {
+        await update(roomRef, {
+          gameStatus: "waiting",
+          gameId: null,
+          calledNumbers: [],
+          lastCalledNumber: null,
+          countdownEndAt: null,
+          countdownStartedBy: null,
+          gameEndedAt: null,
+          nextGameCountdown: null,
+        });
+        console.log(`✅ Room ${roomId} reset to waiting after manual stop + 3-minute countdown`);
+      } catch (err) {
+        console.error(`❌ Error resetting room ${roomId}:`, err);
+      }
+    }, 3 * 60 * 1000); // ✅ 3 minutes
     
     // Clean up drawing loop
     activeDrawingLoops.delete(gameId);
@@ -225,21 +242,40 @@ function startNumberDraw(roomId, gameId) {
     if (bucketIndex >= ranges.length) {
       clearInterval(interval);
 
+      // ✅ Mark game as ended but keep room state for 3 minutes
       await update(roomRef, {
-        gameStatus: "waiting", // ✅ Reset to waiting for next game
-        gameId: null, // ✅ Clear gameId
-        calledNumbers: [], // ✅ Clear called numbers
-        lastCalledNumber: null, // ✅ Clear last called number
-        countdownEndAt: null,
-        countdownStartedBy: null,
+        gameStatus: "ended", // ✅ Change to ended first
+        gameEndedAt: Date.now(), // ✅ Record when game ended
+        nextGameCountdown: Date.now() + (3 * 60 * 1000), // ✅ 3 minutes from now
       });
       await update(gameRef, { 
         status: "ended",
-        active: false // ✅ Mark game as inactive
+        active: false, // ✅ Mark game as inactive
+        endedAt: Date.now()
       });
 
       // ✅ Clean up active drawing loop tracking
       activeDrawingLoops.delete(gameId);
+      
+      // ✅ Start 3-minute countdown to reset room
+      setTimeout(async () => {
+        try {
+          await update(roomRef, {
+            gameStatus: "waiting", // ✅ Reset to waiting after 3 minutes
+            gameId: null, // ✅ Clear gameId
+            calledNumbers: [], // ✅ Clear called numbers
+            lastCalledNumber: null, // ✅ Clear last called number
+            countdownEndAt: null,
+            countdownStartedBy: null,
+            gameEndedAt: null,
+            nextGameCountdown: null,
+          });
+          console.log(`✅ Room ${roomId} reset to waiting after 3-minute countdown`);
+        } catch (err) {
+          console.error(`❌ Error resetting room ${roomId}:`, err);
+        }
+      }, 3 * 60 * 1000); // ✅ 3 minutes
+      
       return;
     }
 

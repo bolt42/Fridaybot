@@ -120,50 +120,60 @@ joinRoom: (roomId: string) => {
 
       let sec = 30;
 
-      const timer =setInterval(async () => {
+      const timer = setInterval(async () => {
   sec--;
 
-  // 🔹 Re-check active players every tick
-  const latestSnap = await get(roomRef);
-  const latestRoom = latestSnap.exists() ? latestSnap.val() : null;
+  try {
+    // 🔹 Always get fresh snapshot
+    const latestSnap = await get(roomRef);
+    if (!latestSnap || !latestSnap.exists()) {
+      clearInterval(timer);
+      return;
+    }
+    const latestRoom = latestSnap.val();
 
-  // ⛔ Stop if another client took over (ownership changed)
-  if (
-    latestRoom?.countdownStartedBy &&
-    latestRoom.countdownStartedBy !== user.telegramId
-  ) {
+    // ⛔ Stop if another client took over (ownership changed)
+    if (
+      latestRoom?.countdownStartedBy &&
+      latestRoom.countdownStartedBy !== user.telegramId
+    ) {
+      clearInterval(timer);
+      return;
+    }
+
+    const stillActivePlayers = latestRoom?.players
+      ? Object.values(latestRoom.players).filter(
+          (p: any) => p.betAmount && p.cardId
+        )
+      : [];
+
+    // ❌ Cancel countdown if fewer than 2 active players remain
+    if (stillActivePlayers.length < 2) {
+      clearInterval(timer);
+      await update(countdownRef, {
+        gameStatus: "waiting",
+        countdown: null,
+        countdownStartedBy: null,
+      });
+      return;
+    }
+
+    // ✅ Continue countdown
+    if (sec > 0) {
+      await update(countdownRef, { countdown: sec });
+    } else {
+      clearInterval(timer);
+      await update(countdownRef, {
+        gameStatus: "playing",
+        countdown: null,
+      });
+    }
+  } catch (err) {
+    console.error("❌ Countdown error:", err);
     clearInterval(timer);
-    return;
-  }
-
-  const stillActivePlayers = latestRoom?.players
-    ? Object.values(latestRoom.players).filter(
-        (p: any) => p.betAmount && p.cardId
-      )
-    : [];
-
-  // ❌ Cancel countdown if fewer than 2 active players remain
-  if (stillActivePlayers.length < 2) {
-    clearInterval(timer);
-    await update(countdownRef, {
-      gameStatus: "waiting",
-      countdown: null,
-      countdownStartedBy: null,
-    });
-    return;
-  }
-
-  // ✅ Continue countdown
-  if (sec > 0) {
-    await update(countdownRef, { countdown: sec });
-  } else {
-    clearInterval(timer);
-    await update(countdownRef, {
-      gameStatus: "playing",
-      countdown: null,
-    });
   }
 }, 1000);
+
 
     })();
   }

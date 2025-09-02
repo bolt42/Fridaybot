@@ -71,7 +71,15 @@ drawNumbersLoop: () => {
     // stop if we exhausted all buckets
     if (bucketIndex >= ranges.length) {
       clearInterval(interval);
-      await update(roomRef, { gameStatus: "ended" });
+
+      // ✅ Reset room when game ends
+      await update(roomRef, {
+        gameStatus: "ended",
+        gameId: null,              // clear game reference
+        countdownEndAt: null,      // reset countdown
+        countdownStartedBy: null,  // reset who started it
+      });
+
       return;
     }
 
@@ -95,18 +103,21 @@ drawNumbersLoop: () => {
     });
 
     // after 5 numbers, move to next bucket
-    if (drawn.filter(n => {
-      if (bucketIndex === 0) return n <= 15;
-      if (bucketIndex === 1) return n >= 16 && n <= 30;
-      if (bucketIndex === 2) return n >= 31 && n <= 45;
-      if (bucketIndex === 3) return n >= 46 && n <= 60;
-      if (bucketIndex === 4) return n >= 61 && n <= 75;
-      return false;
-    }).length >= 5) {
+    if (
+      drawn.filter((n) => {
+        if (bucketIndex === 0) return n <= 15;
+        if (bucketIndex === 1) return n >= 16 && n <= 30;
+        if (bucketIndex === 2) return n >= 31 && n <= 45;
+        if (bucketIndex === 3) return n >= 46 && n <= 60;
+        if (bucketIndex === 4) return n >= 61 && n <= 75;
+        return false;
+      }).length >= 5
+    ) {
       bucketIndex++;
     }
   }, 4000); // every 4s
 },
+
 startGameIfCountdownEnded: async () => {
   const { currentRoom, bingoCards } = get();
   if (!currentRoom) return;

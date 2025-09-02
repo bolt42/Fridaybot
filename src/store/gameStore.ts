@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { rtdb } from '../firebase/config';
-import { ref, onValue, get, set as fbset , update , remove} from 'firebase/database';
+import { ref, onValue, get, set as fbset , update , remove, push} from 'firebase/database';
 import { useAuthStore } from '../store/authStore';
 interface BingoCard {
   id: string;
@@ -25,6 +25,7 @@ interface Room {
   payout?: number;
   countdownEndAt: number, 
   players?: { [id: string]: { id: string; username: string; betAmount: number; cardId: string } };
+  gameId?: string;
 }
 interface GameState {
   rooms: Room[];
@@ -46,7 +47,51 @@ export const useGameStore = create<GameState>((set, get) => ({
   selectedCard: null,
   bingoCards: [],
   loading: false,
-  
+ // add this
+
+// inside useGameStore
+startGameIfCountdownEnded: async () => {
+  const { currentRoom, bingoCards } = get();
+  if (!currentRoom) return;
+
+  // Countdown not yet over
+  if (currentRoom.gameStatus !== "countdown" || !currentRoom.countdownEndAt) return;
+  if (Date.now() < currentRoom.countdownEndAt) return;
+
+  const roomRef = ref(rtdb, `rooms/${currentRoom.id}`);
+  const gamesRef = ref(rtdb, `games`);
+
+  // ✅ collect claimed cards
+  const activeCards = bingoCards.filter(c => c.claimed);
+
+  // ✅ total payout
+  const totalAmount = activeCards.length * currentRoom.betAmount * 0.9;
+
+  // ✅ create new game
+  const newGameRef = push(gamesRef);
+  const gameId = newGameRef.key;
+
+  const gameData = {
+    id: gameId,
+    roomId: currentRoom.id,
+    bingoCards: activeCards,
+    winners: [],
+    drawnNumbers: [],
+    createdAt: Date.now(),
+    status: "playing",
+    amount: totalAmount,
+  };
+
+  // write both room + game atomically
+  await update(ref(rtdb), {
+    [`rooms/${currentRoom.id}/gameStatus`]: "playing",
+    [`rooms/${currentRoom.id}/gameId`]: gameId,
+    [`games/${gameId}`]: gameData,
+  });
+
+  console.log("✅ Game started:", gameData);
+},
+
   fetchRooms: () => {
     const roomsRef = ref(rtdb, 'rooms');
     onValue(roomsRef, (snapshot) => {
@@ -70,7 +115,7 @@ joinRoom: (roomId: string) => {
 
   const updatedRoom = { id: roomId, ...snapshot.val() } as Room;
   set({ currentRoom: updatedRoom });
-
+  get().startGameIfCountdownEnded();
   // ✅ Always fetch cards
   get().fetchBingoCards();
 

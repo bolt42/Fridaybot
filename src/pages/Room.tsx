@@ -182,8 +182,17 @@ return (
 
     {/* Main content row */}
     <div className="flex flex-row gap-2 w-full max-w-full h-full">
+
       {/* Left side (Called numbers) */}
       <div className="w-2/5 h-full flex flex-col bg-white/10 p-2 rounded border border-white/20 text-xs">
+      {currentRoom?.gameStatus === "countdown" && currentRoom.countdown && (
+  <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+    <div className="bg-white text-black rounded-xl p-6 text-center shadow-xl">
+      <h2 className="text-xl font-bold mb-2">Game starting soon</h2>
+      <p className="text-4xl font-mono">{currentRoom.countdown}s</p>
+    </div>
+  </div>
+)}
         {/* Bingo Header */}
         <div className="grid grid-cols-5 gap-1 mb-1">
           {["B", "I", "N", "G", "O"].map((letter) => (
@@ -340,14 +349,7 @@ return (
           </div>
         )}
       </div>
-       {currentRoom?.gameStatus === "countdown" && currentRoom.countdown && (
-  <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-    <div className="bg-white text-black rounded-xl p-6 text-center shadow-xl">
-      <h2 className="text-xl font-bold mb-2">Game starting soon</h2>
-      <p className="text-4xl font-mono">{currentRoom.countdown}s</p>
-    </div>
-  </div>
-)}
+       
     </div>
 
 

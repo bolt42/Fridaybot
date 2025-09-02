@@ -28,7 +28,7 @@ const Room: React.FC = () => {
   const [hasBet, setHasBet] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [gameMessage, setGameMessage] = useState('');
-
+  
 
   const cancelBet = useGameStore((state) => state.cancelBet);
 
@@ -39,6 +39,7 @@ const Room: React.FC = () => {
       joinRoom(roomId);
     }
   }, [roomId, joinRoom]);
+  
   React.useEffect(() => {
     if (userCard) {
     selectCard(userCard.id); // auto-select the user's card
@@ -59,6 +60,27 @@ const Room: React.FC = () => {
       return () => clearInterval(timer);
     }
   }, [userCard,currentRoom?.gameStatus, countdown,selectCard]);
+  // Start countdown if 2+ players bet
+React.useEffect(() => {
+  const activePlayers = Object.values(currentRoom.players || {}).filter(
+    (p: any) => p.betAmount && p.betAmount > 0
+  );
+
+  if (activePlayers.length >= 2 && countdown === 0) {
+    setCountdown(30);
+  }
+}, [currentRoom?.players, countdown]);
+
+// Countdown tick
+React.useEffect(() => {
+  if (countdown > 0) {
+    const timer = setInterval(() => {
+      setCountdown(prev => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }
+}, [countdown]);
+
 
   const handleCardSelect = (cardId: string) => {
     if (!hasBet) {
@@ -340,6 +362,15 @@ return (
         )}
       </div>
     </div>
+    {countdown > 0 && (
+  <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+    <div className="bg-white text-black rounded-xl p-6 text-center shadow-xl">
+      <h2 className="text-xl font-bold mb-2">Game starting soon</h2>
+      <p className="text-4xl font-mono">{countdown}s</p>
+    </div>
+  </div>
+)}
+
   </div>
 );
 

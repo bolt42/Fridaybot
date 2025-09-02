@@ -169,8 +169,20 @@ startGameIfCountdownEnded: async () => {
       if (room._newGame) {
         const { _newGame } = room;
 
-        // ✅ Save game under /games
-        await fbset(ref(rtdb, `games/${_newGame.id}`), _newGame);
+       const gameData = {
+  id: _newGame.id,
+  roomId: _newGame.roomId,
+  bingoCards: _newGame.bingoCards || {},
+  winners: [],
+  drawnNumbers: [],
+  createdAt: Date.now(),
+  status: "playing",
+  amount: _newGame.amount,
+};
+
+// ✅ Save safe object
+await fbset(ref(rtdb, `games/${gameData.id}`), gameData);
+
 
         // Cleanup temporary marker
         await update(roomRef, { _newGame: null });

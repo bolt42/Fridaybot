@@ -73,10 +73,14 @@ joinRoom: (roomId: string) => {
     // ✅ Always fetch cards
     get().fetchBingoCards();
 
-    // ✅ Start countdown when exactly 2 players are in, and no countdown yet
+    // ✅ Count how many players actually placed bets (claimed cards)
+    const activePlayers = updatedRoom.players
+      ? Object.values(updatedRoom.players).filter((p: any) => p.betAmount && p.cardId)
+      : [];
+
+    // ✅ Only start countdown if 2+ players are ACTIVE (have bet & card)
     if (
-      updatedRoom.players &&
-      Object.keys(updatedRoom.players).length === 2 && // 🎯 trigger when 2nd player joins
+      activePlayers.length >= 2 &&
       updatedRoom.gameStatus === "waiting" &&
       !updatedRoom.countdown &&
       !updatedRoom.countdownStartedBy
@@ -86,7 +90,6 @@ joinRoom: (roomId: string) => {
 
       const countdownRef = ref(rtdb, `rooms/${roomId}`);
 
-      // mark who started countdown (so others don't duplicate)
       (async () => {
         await update(countdownRef, {
           gameStatus: "countdown",
@@ -98,6 +101,25 @@ joinRoom: (roomId: string) => {
         const timer = setInterval(async () => {
           sec--;
 
+          // 🔹 Re-check active players every tick
+          const snapshot = await get(roomRef);
+          const latestRoom = snapshot.val();
+          const stillActivePlayers = latestRoom?.players
+            ? Object.values(latestRoom.players).filter((p: any) => p.betAmount && p.cardId)
+            : [];
+
+          // ❌ Cancel countdown if fewer than 2 active players remain
+          if (stillActivePlayers.length < 2) {
+            clearInterval(timer);
+            await update(countdownRef, {
+              gameStatus: "waiting",
+              countdown: null,
+              countdownStartedBy: null,
+            });
+            return;
+          }
+
+          // ✅ Continue countdown
           await update(countdownRef, { countdown: sec });
 
           if (sec <= 0) {

@@ -184,50 +184,52 @@ return (
     <div className="flex flex-row gap-2 w-full max-w-full h-full">
 
       {/* Left side (Called numbers) */}
-     <div className="relative w-2/5 h-full flex flex-col bg-white/10 p-2 rounded border border-white/20 text-xs">
-  {currentRoom?.gameStatus === "countdown" && currentRoom.countdown && (
-    <div className="absolute inset-0 bg-black/70 flex items-center justify-center rounded">
-      <div className="bg-white text-black rounded-xl p-6 text-center shadow-xl">
-        <h2 className="text-xl font-bold mb-2">Game starting soon</h2>
-        <p className="text-4xl font-mono">{currentRoom.countdown}s</p>
+    <div className="relative w-2/5 h-full flex flex-col bg-white/10 p-2 rounded border border-white/20 text-xs">
+  {/* Bingo Header */}
+  <div className="grid grid-cols-5 gap-1 mb-1">
+    {["B", "I", "N", "G", "O"].map((letter) => (
+      <div
+        key={letter}
+        className="w-6 h-6 flex items-center justify-center font-bold text-[10px] bg-purple-600 rounded "
+      >
+        {letter}
       </div>
-    </div>
-  )}
+    ))}
+  </div>
 
+  {/* Numbers Grid with countdown overlay */}
+  <div className="relative flex-1">
+    <div className="grid grid-cols-5 gap-1 w-full h-full">
+      {[...Array(15)].map((_, rowIdx) =>
+        ["B", "I", "N", "G", "O"].map((col, colIdx) => {
+          const num = rowIdx + 1 + colIdx * 15;
+          const isCalled = displayedCalledNumbers.includes(num);
 
-        {/* Bingo Header */}
-        <div className="grid grid-cols-5 gap-1 mb-1">
-          {["B", "I", "N", "G", "O"].map((letter) => (
+          return (
             <div
-              key={letter}
-              className="w-6 h-6 flex items-center justify-center font-bold text-[10px] bg-purple-600 rounded "
+              key={`${col}-${num}`}
+              className={`flex items-center justify-center p-[3px] rounded font-bold text-[11px] transition 
+                ${isCalled ? "bg-green-500 text-white scale-105" : "bg-white/20"}
+              `}
             >
-              {letter}
+              {num}
             </div>
-          ))}
-        </div>
+          );
+        })
+      )}
+    </div>
 
-        {/* Numbers Grid */}
-        <div className="grid grid-cols-5 gap-1 flex-1">
-          {[...Array(15)].map((_, rowIdx) =>
-            ["B", "I", "N", "G", "O"].map((col, colIdx) => {
-              const num = rowIdx + 1 + colIdx * 15;
-              const isCalled = displayedCalledNumbers.includes(num);
-
-              return (
-                <div
-                  key={`${col}-${num}`}
-                  className={`flex items-center justify-center p-[3px] rounded font-bold text-[11px] transition 
-                    ${isCalled ? "bg-green-500 text-white scale-105" : "bg-white/20"}
-                  `}
-                >
-                  {num}
-                </div>
-              );
-            })
-          )}
+    {/* Countdown overlay ONLY on top of numbers grid */}
+    {currentRoom?.gameStatus === "countdown" && currentRoom.countdown && (
+      <div className="absolute inset-0 bg-black/70 flex items-center justify-center rounded">
+        <div className="bg-white text-black rounded-xl text-center shadow-xl mx-[10%] w-[80%]">
+          <h2 className="text-xl font-bold mb-2">Game starting soon</h2>
+          <p className="text-4xl font-mono">{currentRoom.countdown}s</p>
         </div>
       </div>
+    )}
+  </div>
+</div>
 
       {/* Right side (Your Card) */}
       <div className="w-3/5 bg-white/10 p-2 rounded border border-white/20 text-xs">

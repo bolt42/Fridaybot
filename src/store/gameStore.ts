@@ -171,8 +171,7 @@ startGameIfCountdownEnded: async () => {
       console.log("✅ Game started:", gameData);
     }
   });
-}
-
+},
 
 
   fetchRooms: () => {

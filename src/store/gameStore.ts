@@ -120,50 +120,51 @@ joinRoom: (roomId: string) => {
 
       let sec = 30;
 
-      const timer = setInterval(async () => {
-        sec--;
+      const timer =setInterval(async () => {
+  sec--;
 
-        // 🔹 Re-check active players every tick
-        const latestSnap = await get(roomRef);
-        const latestRoom = latestSnap.val();
+  // 🔹 Re-check active players every tick
+  const latestSnap = await get(roomRef);
+  const latestRoom = latestSnap.exists() ? latestSnap.val() : null;
 
-        // ⛔ Stop if another client took over (ownership changed)
-        if (
-          latestRoom?.countdownStartedBy &&
-          latestRoom.countdownStartedBy !== user.telegramId
-        ) {
-          clearInterval(timer);
-          return;
-        }
+  // ⛔ Stop if another client took over (ownership changed)
+  if (
+    latestRoom?.countdownStartedBy &&
+    latestRoom.countdownStartedBy !== user.telegramId
+  ) {
+    clearInterval(timer);
+    return;
+  }
 
-        const stillActivePlayers = latestRoom?.players
-          ? Object.values(latestRoom.players).filter(
-              (p: any) => p.betAmount && p.cardId
-            )
-          : [];
+  const stillActivePlayers = latestRoom?.players
+    ? Object.values(latestRoom.players).filter(
+        (p: any) => p.betAmount && p.cardId
+      )
+    : [];
 
-        // ❌ Cancel countdown if fewer than 2 active players remain
-        if (stillActivePlayers.length < 2) {
-          clearInterval(timer);
-          await update(countdownRef, {
-            gameStatus: "waiting",
-            countdown: null,
-            countdownStartedBy: null,
-          });
-          return;
-        }
+  // ❌ Cancel countdown if fewer than 2 active players remain
+  if (stillActivePlayers.length < 2) {
+    clearInterval(timer);
+    await update(countdownRef, {
+      gameStatus: "waiting",
+      countdown: null,
+      countdownStartedBy: null,
+    });
+    return;
+  }
 
-        // ✅ Continue countdown
-        if (sec > 0) {
-          await update(countdownRef, { countdown: sec });
-        } else {
-          clearInterval(timer);
-          await update(countdownRef, {
-            gameStatus: "playing",
-            countdown: null,
-          });
-        }
-      }, 1000);
+  // ✅ Continue countdown
+  if (sec > 0) {
+    await update(countdownRef, { countdown: sec });
+  } else {
+    clearInterval(timer);
+    await update(countdownRef, {
+      gameStatus: "playing",
+      countdown: null,
+    });
+  }
+}, 1000);
+
     })();
   }
 });

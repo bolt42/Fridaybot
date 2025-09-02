@@ -230,11 +230,28 @@ placeBet: async () => {
   }
 
   try {
-    // ✅ Mark card as claimed
     const cardRef = ref(rtdb, `rooms/${currentRoom.id}/bingoCards/${selectedCard.id}`);
-    await update(cardRef, { claimed: true, claimedBy: userId });
 
-    // ✅ Add player to room
+    // 🔒 Transaction ensures atomic update
+    const result = await runTransaction(cardRef, (card: any) => {
+      if (card) {
+        if (card.claimed) {
+          // ❌ Already taken
+          return; 
+        }
+        // ✅ Mark card as claimed
+        card.claimed = true;
+        card.claimedBy = userId;
+      }
+      return card;
+    });
+
+    if (!result.committed) {
+      alert("❌ This card was already claimed by another player!");
+      return false;
+    }
+
+    // ✅ Add player to room if card claim succeeded
     const playerRef = ref(rtdb, `rooms/${currentRoom.id}/players/${userId}`);
     await fbset(playerRef, {
       telegramId: userId,
@@ -249,6 +266,7 @@ placeBet: async () => {
     return false;
   }
 },
+
 
 cancelBet: async (cardId?: string) => {
   const { selectedCard, currentRoom } = get();

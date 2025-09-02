@@ -131,7 +131,14 @@ startGameIfCountdownEnded: async () => {
       body: JSON.stringify({ roomId: currentRoom.id }),
     });
 
-    const data = await res.json();
+    let data;
+    try {
+      data = await res.json();
+    } catch {
+      const text = await res.text();
+      throw new Error(`Server did not return JSON: ${text}`);
+    }
+
     if (!res.ok) {
       console.error("❌ Failed to start game:", data.error);
       return;
@@ -139,7 +146,7 @@ startGameIfCountdownEnded: async () => {
 
     console.log("✅ Game created on server:", data.gameId);
 
-    // ✅ Start local number drawing loop
+    // Only start loop if *this client* is in the game
     get().drawNumbersLoop();
   } catch (err) {
     console.error("❌ Error calling start-game API:", err);

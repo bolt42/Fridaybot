@@ -1,6 +1,7 @@
+// /pages/api/start-game.ts
 import { NextApiRequest, NextApiResponse } from "next";
-import { rtdb } from "../../firebase/config";
-import { ref, push, update, runTransaction } from "firebase/database";
+import { rtdb } from "../src/firebase/config";
+import { ref, runTransaction, push, update } from "firebase/database";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -16,38 +17,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const roomRef = ref(rtdb, `rooms/${roomId}`);
     const gamesRef = ref(rtdb, "games");
 
-    let newGameId: string | null = null;
+    let createdGameId: string | null = null;
 
+    // 🔒 Transaction prevents multiple creations
     await runTransaction(roomRef, (room: any) => {
       if (!room) return room;
 
-      // 🚫 Game already running
+      // Already playing → abort
       if (room.gameStatus === "playing" && room.gameId) {
         return room;
       }
 
-      // 🚫 Countdown not finished
+      // Countdown not finished → abort
       if (room.countdownEndAt && Date.now() < room.countdownEndAt) {
         return room;
       }
 
       // ✅ Create new game
       const newGameRef = push(gamesRef);
-      newGameId = newGameRef.key!;
+      createdGameId = newGameRef.key!;
 
       const activeCards = Object.values(room.bingoCards || {}).filter(
         (c: any) => c.claimed
       );
-
       const totalAmount = activeCards.length * room.betAmount * 0.9;
 
       room.gameStatus = "playing";
-      room.gameId = newGameId;
+      room.gameId = createdGameId;
       room.countdownEndAt = null;
       room.countdownStartedBy = null;
 
-      update(ref(rtdb, `games/${newGameId}`), {
-        id: newGameId,
+      // Create game entry outside transaction (safe async)
+      update(ref(rtdb, `games/${createdGameId}`), {
+        id: createdGameId,
         roomId,
         bingoCards: activeCards,
         winners: [],
@@ -60,9 +62,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return room;
     });
 
-    return res.status(200).json({ success: true, gameId: newGameId });
+    return res.status(200).json({ success: true, gameId: createdGameId });
   } catch (err: any) {
-    console.error("❌ Error creating game:", err);
-    return res.status(500).json({ error: "Failed to create game" });
+    console.error("❌ start-game error:", err);
+    return res.status(500).json({ error: err.message || "Server error" });
   }
 }

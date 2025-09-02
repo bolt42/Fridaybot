@@ -1,59 +1,51 @@
-  // adjust path if needed
-import { ref, push, set as fbset, runTransaction } from "firebase/database";
-import { rtdb } from "../bot/firebaseConfig.js"; 
-// ✅ Always default export the handler
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method Not Allowed" });
-  }
+import { rtdb } from "../bot/firebaseConfig.js";
+import { ref, get, set as fbset, runTransaction } from "firebase/database";
+import { v4 as uuidv4 } from "uuid";
 
+export default async function handler(req, res) {
   try {
-    const { roomId } = req.body;
+    const { roomId } = req.body; // ✅ client must send roomId
     if (!roomId) {
       return res.status(400).json({ error: "Missing roomId" });
     }
 
     const roomRef = ref(rtdb, `rooms/${roomId}`);
-    const gamesRef = ref(rtdb, "games");
+    const gameId = uuidv4();
 
     await runTransaction(roomRef, (room) => {
       if (!room) return room;
+      if (room.gameStatus !== "countdown") return room;
 
-      if (room.gameStatus === "playing" && room.gameId) return room;
+      // collect cards that are claimed
+      const activeCards = {};
+      for (const [cardId, card] of Object.entries(room.bingoCards || {})) {
+        if (card.claimed) {
+          activeCards[cardId] = card;
+        }
+      }
 
-      if (room.countdownEndAt && Date.now() < room.countdownEndAt) return room;
-
-      const newGameRef = push(gamesRef);
-      const gameId = newGameRef.key;
-
-      const activeCards = Object.values(room.bingoCards || {}).filter(
-        (c) => c.claimed
-      );
-
-      const totalAmount = activeCards.length * room.betAmount * 0.9;
-
-      room.gameStatus = "playing";
-      room.gameId = gameId;
-      room.countdownEndAt = null;
-      room.countdownStartedBy = null;
-
+      // ✅ store game using the roomId from request
       fbset(ref(rtdb, `games/${gameId}`), {
         id: gameId,
-        roomId: currentRoom.id,
+        roomId,
         bingoCards: activeCards,
         winners: [],
         drawnNumbers: [],
         createdAt: Date.now(),
         status: "playing",
-        amount: totalAmount,
+        amount: room.totalAmount || 0,
       });
+
+      // update room status
+      room.gameStatus = "playing";
+      room.activeGameId = gameId;
 
       return room;
     });
 
-    return res.status(200).json({ success: true });
+    return res.status(200).json({ success: true, gameId });
   } catch (err) {
-    console.error("❌ Error in start-game API:", err);
-    return res.status(500).json({ error: "Internal Server Error" });
+    console.error("❌ Error starting game:", err);
+    return res.status(500).json({ error: err.message });
   }
 }

@@ -1,7 +1,6 @@
-// ✅ Use ESM imports, not require
-import { rtdb } from "../bot/firebaseConfig.js";  // adjust path if needed
+  // adjust path if needed
 import { ref, push, set as fbset, runTransaction } from "firebase/database";
-
+import { rtdb } from "../bot/firebaseConfig.js"; 
 // ✅ Always default export the handler
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -40,7 +39,7 @@ export default async function handler(req, res) {
 
       fbset(ref(rtdb, `games/${gameId}`), {
         id: gameId,
-        roomId: room.id,
+        roomId: currentRoom.id,
         bingoCards: activeCards,
         winners: [],
         drawnNumbers: [],

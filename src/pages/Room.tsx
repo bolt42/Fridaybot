@@ -82,7 +82,18 @@ React.useEffect(() => {
   
 }, [currentRoom]);
 
+React.useEffect(() => {
+  if (!currentRoom?.countdownEndAt || currentRoom?.gameStatus !== "countdown") return;
 
+  const interval = setInterval(() => {
+    if (Date.now() >= currentRoom.countdownEndAt) {
+      useGameStore.getState().startGameIfCountdownEnded();
+      clearInterval(interval);
+    }
+  }, 1000);
+
+  return () => clearInterval(interval);
+}, [currentRoom?.countdownEndAt, currentRoom?.gameStatus]);
 // Countdown tick
 
 

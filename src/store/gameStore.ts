@@ -109,93 +109,51 @@ drawNumbersLoop: () => {
 },
 // inside useGameStore
 startGameIfCountdownEnded: async () => {
-  const { currentRoom } = get();
+  const { currentRoom, bingoCards } = get();
   if (!currentRoom) return;
 
+  // Countdown not yet over
+  if (currentRoom.gameStatus !== "countdown" || !currentRoom.countdownEndAt) return;
+  if (Date.now() < currentRoom.countdownEndAt) return;
+
   const roomRef = ref(rtdb, `rooms/${currentRoom.id}`);
-  const gamesRef = ref(rtdb, "games");
+  const gamesRef = ref(rtdb, `games`);
 
-  // Generate a stable gameId BEFORE transaction
+  // ✅ collect claimed cards
+  const activeCards = bingoCards.filter(c => c.claimed);
+
+  // ✅ total payout
+  const totalAmount = activeCards.length * currentRoom.betAmount * 0.9;
+
+  // ✅ create new game
   const newGameRef = push(gamesRef);
-  const gameId = newGameRef.key!;
+  const gameId = newGameRef.key;
 
-  await runTransaction(roomRef, (room: any) => {
-    if (!room) return room;
+  const gameData = {
+    id: gameId,
+    roomId: currentRoom.id,
+    bingoCards: activeCards,
+    winners: [],
+    drawnNumbers: [],
+    createdAt: Date.now(),
+    status: "playing",
+    amount: totalAmount,
+  };
 
-    // 1. Only proceed if countdown is active and expired
-    if (room.gameStatus !== "countdown" || !room.countdownEndAt) return room;
-    if (Date.now() < room.countdownEndAt) return room;
+  // write both room + game atomically
+await update(ref(rtdb), {
+  [`rooms/${currentRoom.id}/gameStatus`]: "playing",
+  [`rooms/${currentRoom.id}/gameId`]: gameId,
+  [`rooms/${currentRoom.id}/countdownStartedBy`]: null,
+  [`rooms/${currentRoom.id}/countdownEndAt`]: null,
+  [`games/${gameId}`]: gameData,
+});
 
-    // 2. Don’t create a new game if one already exists
-    if (room.gameId) return room;
+// ✅ start number drawing process
+get().drawNumbersLoop();
 
-    // 3. Collect claimed cards
-    const activeCards = Object.values(room.bingoCards || {}).filter(
-      (c: any) => c.claimed
-    );
-
-    if (activeCards.length < 2) {
-      // Reset to waiting if not enough players
-      room.gameStatus = "waiting";
-      room.countdownEndAt = null;
-      room.countdownStartedBy = null;
-      return room;
-    }
-
-    const totalAmount = activeCards.length * room.betAmount * 0.9;
-
-    // 4. Flip state to playing
-    room.gameStatus = "playing";
-    room.gameId = gameId;
-    room.countdownStartedBy = null;
-    room.countdownEndAt = null;
-
-    // Temporarily store new game in room (so we can write it later)
-    room._newGame = {
-      id: gameId,
-      roomId: room.id,
-      bingoCards: activeCards,
-      winners: [],
-      drawnNumbers: [],
-      createdAt: Date.now(),
-      status: "playing",
-      amount: totalAmount,
-    };
-
-    return room;
-  }).then(async (result) => {
-    if (result.committed && result.snapshot.exists()) {
-      const room = result.snapshot.val();
-      if (room._newGame) {
-        const { _newGame } = room;
-
-       const gameData = {
-  id: _newGame.id,
-  roomId: _newGame.roomId,
-  bingoCards: _newGame.bingoCards || {},
-  winners: [],
-  drawnNumbers: [],
-  createdAt: Date.now(),
-  status: "playing",
-  amount: _newGame.amount,
-};
-
-// ✅ Save safe object
-await fbset(ref(rtdb, `games/${gameData.id}`), gameData);
-
-
-        // Cleanup temporary marker
-        await update(roomRef, { _newGame: null });
-
-        // ✅ Start number drawing
-        get().drawNumbersLoop();
-
-        console.log("✅ Game started:", _newGame);
-      }
-    }
-  });
+  console.log("✅ Game started:", gameData);
 },
-
 
   fetchRooms: () => {
     const roomsRef = ref(rtdb, 'rooms');

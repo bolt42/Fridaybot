@@ -73,6 +73,22 @@ React.useEffect(() => {
 
   setHasBet(true); // ✅ but don't reset card selection if it's already consistent
 }, [userCard, selectedCard, selectCard]);
+React.useEffect(() => {
+  if (!selectedCard) return;
+
+  // find the updated version of this card in bingoCards
+  const updatedCard = bingoCards.find((c) => c.id === selectedCard.id);
+
+  if (!updatedCard) return;
+
+  // ✅ If my card is still available OR claimed by me → keep it
+  if (!updatedCard.claimed || updatedCard.claimedBy === user?.telegramId) {
+    return;
+  }
+
+  // ❌ If my card was claimed by another player → clear/reset selection
+  selectCard("");
+}, [bingoCards, selectedCard, user?.telegramId, selectCard]);
 
   // Start countdown if 2+ players bet
 React.useEffect(() => {

@@ -2,6 +2,9 @@ import { rtdb } from "../bot/firebaseConfig.js";
 import { ref, get, set as fbset, runTransaction, update } from "firebase/database";
 import { v4 as uuidv4 } from "uuid";
 
+// active intervals in-memory
+const activeDrawingLoops = new Set();
+
 export default async function handler(req, res) {
   try {
     const { roomId, action } = req.body;
@@ -17,7 +20,7 @@ export default async function handler(req, res) {
 
     // ✅ Check if there’s already an active game for this room
     const existingGamesSnap = await get(ref(rtdb, `games`));
-    let existingGameId = null;
+    let existingGameId: string | null = null;
 
     if (existingGamesSnap.exists()) {
       existingGamesSnap.forEach((child) => {
@@ -29,17 +32,16 @@ export default async function handler(req, res) {
     }
 
     if (existingGameId) {
-      console.log(`⚠️ Room ${roomId} already has active game ${existingGameId}, not creating a new one`);
+      console.log(`⚠️ Room ${roomId} already has active game ${existingGameId}`);
       return res.status(200).json({ message: "Game already active", gameId: existingGameId });
     }
 
     const roomRef = ref(rtdb, `rooms/${roomId}`);
     const gameId = uuidv4();
-
-    let activeCards = {};
+    let activeCards: Record<string, any> = {};
 
     // ✅ Reserve gameId safely in room
-    const result = await runTransaction(roomRef, (room) => {
+    const result = await runTransaction(roomRef, (room: any) => {
       if (!room) return room;
 
       if (room.gameStatus !== "countdown" || room.gameId) {
@@ -73,35 +75,67 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Transaction aborted (maybe already playing)" });
     }
 
+    // ✅ Create numbers upfront (exactly 25 numbers)
+    const drawOrder = generateBingoDraw();
+
     // ✅ Create the game in DB
     await fbset(ref(rtdb, `games/${gameId}`), {
       id: gameId,
       roomId,
       bingoCards: activeCards,
       winners: [],
-      drawnNumbers: [],
+      drawnNumbers: drawOrder,
       createdAt: Date.now(),
       status: "playing",
       active: true,
       amount: result.snapshot.val().totalAmount || 0,
     });
 
-    // ✅ Start number drawing loop for this room’s game
-    startNumberDraw(roomId, gameId);
+    // ✅ Mark all other games inactive
+    if (existingGamesSnap.exists()) {
+      existingGamesSnap.forEach(async (child) => {
+        const g = child.val();
+        if (g.roomId === roomId && child.key !== gameId) {
+          await update(ref(rtdb, `games/${child.key}`), { active: false, status: "ended" });
+        }
+      });
+    }
+
+    // ✅ Start number drawing loop
+    startNumberDraw(roomId, gameId, drawOrder);
 
     return res.status(200).json({ success: true, gameId });
-  } catch (err) {
+  } catch (err: any) {
     console.error("❌ Error starting game:", err);
     return res.status(500).json({ error: err.message });
   }
 }
 
 // -------------------
-// Number drawing loop
+// Number drawing
 // -------------------
-const activeDrawingLoops = new Set();
+function generateBingoDraw(): number[] {
+  const ranges = [
+    [1, 15],
+    [16, 30],
+    [31, 45],
+    [46, 60],
+    [61, 75],
+  ];
+  let numbers: number[] = [];
 
-function startNumberDraw(roomId, gameId) {
+  ranges.forEach(([min, max]) => {
+    const bucket = Array.from({ length: max - min + 1 }, (_, i) => min + i);
+    for (let i = 0; i < 5; i++) {
+      const idx = Math.floor(Math.random() * bucket.length);
+      numbers.push(bucket.splice(idx, 1)[0]);
+    }
+  });
+
+  return numbers;
+}
+
+function startNumberDraw(roomId: string, gameId: string, drawOrder: number[]) {
   if (activeDrawingLoops.has(gameId)) {
     console.log(`⚠️ Drawing loop already active for game ${gameId}`);
     return;
@@ -112,23 +146,12 @@ function startNumberDraw(roomId, gameId) {
   const gameRef = ref(rtdb, `games/${gameId}`);
   const roomRef = ref(rtdb, `rooms/${roomId}`);
 
-  const ranges = [
-    Array.from({ length: 15 }, (_, i) => i + 1),
-    Array.from({ length: 15 }, (_, i) => i + 16),
-    Array.from({ length: 15 }, (_, i) => i + 31),
-    Array.from({ length: 15 }, (_, i) => i + 46),
-    Array.from({ length: 15 }, (_, i) => i + 61),
-  ];
-
-  let bucketIndex = 0;
-  let drawn = [];
-
+  let index = 0;
   const interval = setInterval(async () => {
     try {
       const gameSnapshot = await get(gameRef);
       const gameData = gameSnapshot.val();
 
-      // ✅ Ensure only this game updates
       if (!gameData || !gameData.active || gameData.status !== "playing") {
         console.log(`⚠️ Game ${gameId} stopped, ending loop`);
         clearInterval(interval);
@@ -136,11 +159,10 @@ function startNumberDraw(roomId, gameId) {
         return;
       }
 
-      if (bucketIndex >= ranges.length) {
-        clearInterval(interval);
-
+      if (index >= drawOrder.length) {
+        // ✅ End game
         await update(roomRef, {
-          gameStatus: "waiting",
+          gameStatus: "ended",
           gameId: null,
           calledNumbers: [],
           lastCalledNumber: null,
@@ -148,57 +170,34 @@ function startNumberDraw(roomId, gameId) {
           countdownStartedBy: null,
         });
 
-        await update(gameRef, { status: "ended", active: false });
+        await update(gameRef, { status: "ended", active: false, endedAt: Date.now() });
 
+        clearInterval(interval);
         activeDrawingLoops.delete(gameId);
         return;
       }
 
-      const bucket = ranges[bucketIndex];
-      if (bucket.length === 0) {
-        bucketIndex++;
-        return;
-      }
+      const num = drawOrder[index];
+      index++;
 
-      const idx = Math.floor(Math.random() * bucket.length);
-      const num = bucket[idx];
-      bucket.splice(idx, 1);
-
-      drawn.push(num);
-
-      // ✅ Update only this room + its game
       await Promise.all([
-        update(gameRef, { drawnNumbers: drawn, lastDrawn: num }),
-        update(roomRef, { calledNumbers: drawn, lastCalledNumber: num }),
+        update(gameRef, { lastDrawn: num }),
+        update(roomRef, { calledNumbers: drawOrder.slice(0, index), lastCalledNumber: num }),
       ]);
 
       console.log(`🎲 Called number ${num} for room ${roomId}, game ${gameId}`);
-
-      const numbersInBucket = drawn.filter((n) => {
-        if (bucketIndex === 0) return n <= 15;
-        if (bucketIndex === 1) return n >= 16 && n <= 30;
-        if (bucketIndex === 2) return n >= 31 && n <= 45;
-        if (bucketIndex === 3) return n >= 46 && n <= 60;
-        if (bucketIndex === 4) return n >= 61 && n <= 75;
-        return false;
-      });
-
-      if (numbersInBucket.length >= 5) {
-        bucketIndex++;
-        console.log(`📦 Moving to next bucket (${bucketIndex}) for game ${gameId}`);
-      }
     } catch (err) {
       console.error(`❌ Error in drawing loop for ${gameId}:`, err);
       clearInterval(interval);
       activeDrawingLoops.delete(gameId);
     }
-  }, 2000);
+  }, 1000); // 1s gap
 }
 
 // -------------------
 // Stop Game Function
 // -------------------
-async function stopGame(roomId, res) {
+async function stopGame(roomId: string, res: any) {
   try {
     const roomRef = ref(rtdb, `rooms/${roomId}`);
     const roomSnapshot = await get(roomRef);
@@ -227,7 +226,7 @@ async function stopGame(roomId, res) {
     activeDrawingLoops.delete(gameId);
 
     return res.status(200).json({ success: true, message: `Game ${gameId} stopped` });
-  } catch (err) {
+  } catch (err: any) {
     console.error("❌ Error stopping game:", err);
     return res.status(500).json({ error: err.message });
   }

@@ -279,8 +279,9 @@ return (
         <div className="flex flex-col items-center justify-center bg-white/10 p-2 rounded border border-white/20 min-h-[100px]">
           <span className="text-[10px] mb-1">Current</span>
           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-lg font-bold shadow">
-            -
-          </div>
+  {currentRoom?.lastCalledNumber ?? "-"}
+</div>
+
         </div>
 
         {/* Card header */}

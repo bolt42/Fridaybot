@@ -24,6 +24,7 @@ interface Room {
   winner?: string;
   payout?: number;
   countdownEndAt: number, 
+  lastCalledNumber:number,
   players?: { [id: string]: { id: string; username: string; betAmount: number; cardId: string } };
   gameId?: string;
 }
@@ -55,29 +56,56 @@ drawNumbersLoop: () => {
   const gameRef = ref(rtdb, `games/${currentRoom.gameId}`);
   const roomRef = ref(rtdb, `rooms/${currentRoom.id}`);
 
-  let availableNumbers = Array.from({ length: 75 }, (_, i) => i + 1);
+  // Create 5 buckets (B-I-N-G-O)
+  const ranges = [
+    Array.from({ length: 15 }, (_, i) => i + 1),   // 1–15
+    Array.from({ length: 15 }, (_, i) => i + 16),  // 16–30
+    Array.from({ length: 15 }, (_, i) => i + 31),  // 31–45
+    Array.from({ length: 15 }, (_, i) => i + 46),  // 46–60
+    Array.from({ length: 15 }, (_, i) => i + 61),  // 61–75
+  ];
+
+  let bucketIndex = 0; // start with B column
   let drawn: number[] = [];
 
-  let count = 0;
   const interval = setInterval(async () => {
-    if (count >= 25 || availableNumbers.length === 0) {
+    // stop if we exhausted all buckets
+    if (bucketIndex >= ranges.length) {
       clearInterval(interval);
-      // game ends automatically after 25 draws
       await update(roomRef, { gameStatus: "ended" });
       return;
     }
 
-    // pick a random number
-    const idx = Math.floor(Math.random() * availableNumbers.length);
-    const num = availableNumbers[idx];
-    availableNumbers.splice(idx, 1);
+    const bucket = ranges[bucketIndex];
+    if (bucket.length === 0) {
+      bucketIndex++; // move to next column
+      return;
+    }
+
+    // draw one random number from current bucket
+    const idx = Math.floor(Math.random() * bucket.length);
+    const num = bucket[idx];
+    bucket.splice(idx, 1); // remove from bucket
     drawn.push(num);
 
-    // push to firebase
+    // ✅ append new drawn number
     await update(gameRef, { drawnNumbers: drawn });
-    await update(roomRef, { calledNumbers: drawn });
+    await update(roomRef, {
+      calledNumbers: drawn,
+      lastCalledNumber: num, // keep track of latest
+    });
 
-    count++;
+    // after 5 numbers, move to next bucket
+    if (drawn.filter(n => {
+      if (bucketIndex === 0) return n <= 15;
+      if (bucketIndex === 1) return n >= 16 && n <= 30;
+      if (bucketIndex === 2) return n >= 31 && n <= 45;
+      if (bucketIndex === 3) return n >= 46 && n <= 60;
+      if (bucketIndex === 4) return n >= 61 && n <= 75;
+      return false;
+    }).length >= 5) {
+      bucketIndex++;
+    }
   }, 4000); // every 4s
 },
 // inside useGameStore

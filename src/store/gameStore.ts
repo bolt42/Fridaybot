@@ -55,47 +55,30 @@ export const useGameStore = create<GameState>((set, get) => ({
  // add this
 
 startGameIfCountdownEnded: async () => {
-    const { currentRoom, startingGame } = get();
-    if (!currentRoom) return;
+  const { currentRoom } = get();
+  if (!currentRoom) return;
 
-    if (startingGame) {
-      console.log("⚠️ Game start already in progress, skipping...");
-      return;
+  try {
+    const res = await fetch("/api/start-game", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roomId: currentRoom.id }),
+    });
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || "Failed to start game");
     }
 
-    if (currentRoom.gameStatus !== "countdown" || !currentRoom.countdownEndAt)
-      return;
-    if (Date.now() < currentRoom.countdownEndAt) return;
+    // ✅ Only call .json() once
+    const data = await res.json();
+    console.log("✅ Game started:", data);
 
-    set({ startingGame: true });
-
-    try {
-      const res = await fetch("/api/start-game", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ roomId: currentRoom.id }),
-      });
-
-      let data;
-      try {
-        data = await res.json();
-      } catch {
-        const text = await res.text();
-        throw new Error(`Server did not return JSON: ${text}`);
-      }
-
-      if (!res.ok) {
-        console.error("❌ Failed to start game:", data.error);
-        return;
-      }
-
-      console.log("✅ Game created on server:", data.gameId);
-    } catch (err) {
-      console.error("❌ Error calling start-game API:", err);
-    } finally {
-      set({ startingGame: false });
-    }
-  },
+    return data;
+  } catch (err) {
+    console.error("❌ Error calling start-game API:", err);
+  }
+},
   fetchRooms: () => {
     const roomsRef = ref(rtdb, 'rooms');
     onValue(roomsRef, (snapshot) => {

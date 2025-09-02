@@ -115,6 +115,10 @@ startGameIfCountdownEnded: async () => {
   const roomRef = ref(rtdb, `rooms/${currentRoom.id}`);
   const gamesRef = ref(rtdb, "games");
 
+  // 🔑 generate stable gameId before transaction
+  const newGameRef = push(gamesRef);
+  const gameId = newGameRef.key!;
+
   await runTransaction(roomRef, (room: any) => {
     if (!room) return room;
 
@@ -122,13 +126,13 @@ startGameIfCountdownEnded: async () => {
     if (room.gameStatus !== "countdown" || !room.countdownEndAt) return room;
     if (Date.now() < room.countdownEndAt) return room;
 
-    // collect claimed cards from room state
+    // collect claimed cards
     const activeCards = Object.values(room.bingoCards || {}).filter(
       (c: any) => c.claimed
     );
 
-    // if no players, cancel game
     if (activeCards.length < 2) {
+      // not enough players → reset room
       room.gameStatus = "waiting";
       room.countdownEndAt = null;
       room.countdownStartedBy = null;
@@ -137,11 +141,14 @@ startGameIfCountdownEnded: async () => {
 
     const totalAmount = activeCards.length * room.betAmount * 0.9;
 
-    // create gameId inside transaction (only once)
-    const newGameRef = push(gamesRef);
-    const gameId = newGameRef.key!;
+    // ✅ flip room state
+    room.gameStatus = "playing";
+    room.gameId = gameId;
+    room.countdownStartedBy = null;
+    room.countdownEndAt = null;
 
-    const gameData = {
+    // embed newGame so we can persist it after commit
+    room._newGame = {
       id: gameId,
       roomId: room.id,
       bingoCards: activeCards,
@@ -152,31 +159,22 @@ startGameIfCountdownEnded: async () => {
       amount: totalAmount,
     };
 
-    // mark room as playing
-    room.gameStatus = "playing";
-    room.gameId = gameId;
-    room.countdownStartedBy = null;
-    room.countdownEndAt = null;
-
-    // temporarily embed new game into room for commit
-    room._newGame = gameData;
-
     return room;
   }).then(async (result) => {
     if (result.committed && result.snapshot.exists()) {
       const room = result.snapshot.val();
-
       if (room._newGame) {
-        const { _newGame, ...cleanRoom } = room;
+        const { _newGame } = room;
 
-        // write game under /games (outside transaction)
+        // ✅ save new game under /games
         await fbset(ref(rtdb, `games/${_newGame.id}`), _newGame);
 
         // cleanup _newGame marker
         await update(roomRef, { _newGame: null });
 
-        // only one client will actually see its own commit succeed
+        // ✅ start loop only on the client who committed
         get().drawNumbersLoop();
+
         console.log("✅ Game started:", _newGame);
       }
     }

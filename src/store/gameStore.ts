@@ -124,13 +124,13 @@ joinRoom: (roomId: string) => {
   sec--;
 
   try {
-    // 🔹 Always get fresh snapshot
-    const latestSnap = await get(roomRef);
-    if (!latestSnap || !latestSnap.exists()) {
+    // 🔹 Directly get raw value
+    const latestRoom = await get(roomRef);
+
+    if (!latestRoom) {
       clearInterval(timer);
       return;
     }
-    const latestRoom = latestSnap.val();
 
     // ⛔ Stop if another client took over (ownership changed)
     if (

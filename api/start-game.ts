@@ -1,5 +1,5 @@
 // /pages/api/start-game.js (or .ts if using TS)
-import { rtdb } from "../src/firebase/config.js";
+import { rtdb } from "../src/firebase/config";
 import { ref, runTransaction, push, update } from "firebase/database";
 
 export default async function handler(req, res) {
@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { roomId } = req.body;
+    const {roomId } = req.body;
     if (!roomId) {
       res.status(400).json({ error: "Missing roomId" });
       return;

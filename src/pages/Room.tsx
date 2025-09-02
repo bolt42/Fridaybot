@@ -26,7 +26,6 @@ const Room: React.FC = () => {
  const cardNumbers = displayedCard?.numbers ?? [];
   const [markedNumbers, setMarkedNumbers] = useState<number[]>([]);
   const [hasBet, setHasBet] = useState(false);
-  const [countdown, setCountdown] = useState(0);
   const [gameMessage, setGameMessage] = useState('');
   
 
@@ -46,20 +45,8 @@ const Room: React.FC = () => {
     setHasBet(true); // ✅ mark that the user already has a bet
   }
  
-    if (currentRoom?.gameStatus === 'countdown' && countdown > 0) {
-      const timer = setInterval(() => {
-        setCountdown(prev => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-      
-      return () => clearInterval(timer);
-    }
-  }, [userCard,currentRoom?.gameStatus, countdown,selectCard]);
+ 
+  }, [userCard,currentRoom?.gameStatus, selectCard]);
   // Start countdown if 2+ players bet
 React.useEffect(() => {
   if (!currentRoom || !currentRoom.players) return; // ✅ guard against null
@@ -68,21 +55,12 @@ React.useEffect(() => {
     (p: any) => p.betAmount && p.betAmount > 0
   );
 
-  if (activePlayers.length >= 2 && countdown === 0) {
-    setCountdown(30);
-  }
-}, [currentRoom, countdown]);
+  
+}, [currentRoom]);
 
 
 // Countdown tick
-React.useEffect(() => {
-  if (countdown > 0) {
-    const timer = setInterval(() => {
-      setCountdown(prev => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(timer);
-  }
-}, [countdown]);
+
 
 
   const handleCardSelect = (cardId: string) => {
@@ -108,9 +86,7 @@ React.useEffect(() => {
     }
     setGameMessage('Bet placed! Waiting for other players...');
     
-    setTimeout(() => {
-      setCountdown(30);
-    }, 2000);
+   
   }
 };
 
@@ -365,14 +341,15 @@ return (
         )}
       </div>
     </div>
-    {countdown > 0 && (
+  {currentRoom?.countdown && currentRoom.countdown > 0 && (
   <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
     <div className="bg-white text-black rounded-xl p-6 text-center shadow-xl">
       <h2 className="text-xl font-bold mb-2">Game starting soon</h2>
-      <p className="text-4xl font-mono">{countdown}s</p>
+      <p className="text-4xl font-mono">{currentRoom.countdown}s</p>
     </div>
   </div>
 )}
+
 
   </div>
 );

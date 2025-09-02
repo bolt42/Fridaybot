@@ -22,6 +22,7 @@ interface Room {
   calledNumbers: number[];
   winner?: string;
   payout?: number;
+  countdown?: number; 
   players?: { [id: string]: { id: string; username: string; betAmount: number; cardId: string } };
 }
 interface GameState {
@@ -55,28 +56,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       set({ rooms });
     });
   },
-joinRoom: (roomId: string) => {
-  const roomRef = ref(rtdb, 'rooms/' + roomId);
 
-  // Listen directly to this room
-  onValue(roomRef, (snapshot) => {
-    if (snapshot.exists()) {
-      const updatedRoom = { id: roomId, ...snapshot.val() } as Room;
-       const currentRoom = get().currentRoom;
-      if (!currentRoom || currentRoom.id !== roomId) {
-        set({ selectedCard: null });
-      }
-
-      set({ currentRoom: updatedRoom });
-
-      // ✅ Fetch only this room's cards
-      get().fetchBingoCards();
-      
-    } else {
-      set({ currentRoom: null });
-    }
-  });
-},
 
 joinRoom: (roomId: string) => {
   const roomRef = ref(rtdb, 'rooms/' + roomId);

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { rtdb } from '../firebase/config';
-import { ref, onValue, get, set as fbset , update , remove, push} from 'firebase/database';
+import { ref, onValue, get, set as fbset , update , remove, push, runTransaction} from 'firebase/database';
 import { useAuthStore } from '../store/authStore';
 interface BingoCard {
   id: string;

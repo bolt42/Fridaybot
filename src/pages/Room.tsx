@@ -63,16 +63,7 @@ const Room: React.FC = () => {
     }
   }, [roomId, joinRoom]);
   
-React.useEffect(() => {
-  if (!userCard) return;
 
-  // only select if no card is selected, or it's different
-  if (!selectedCard || selectedCard.id !== userCard.id) {
-    selectCard(userCard.id);
-  }
-
-  setHasBet(true); // ✅ but don't reset card selection if it's already consistent
-}, [userCard, selectedCard, selectCard]);
 React.useEffect(() => {
   if (!selectedCard) return;
 

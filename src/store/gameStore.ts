@@ -117,61 +117,65 @@ drawNumbersLoop: () => {
     }
   }, 4000); // every 4s
 },
-
 startGameIfCountdownEnded: async () => {
   const { currentRoom, bingoCards } = get();
   if (!currentRoom) return;
 
-  // Only proceed if countdown is over
   if (currentRoom.gameStatus !== "countdown" || !currentRoom.countdownEndAt) return;
   if (Date.now() < currentRoom.countdownEndAt) return;
 
   const roomRef = ref(rtdb, `rooms/${currentRoom.id}`);
   const gamesRef = ref(rtdb, "games");
-  if (currentRoom.gameId) {
-  console.log("⚠️ Game already exists:", currentRoom.gameId);
-  return;
-}
-  // ✅ Check if a game is already active for this room
-  if (currentRoom.gameId && currentRoom.gameStatus === "playing") {
-    console.log("⚠️ A game is already active for this room:", currentRoom.gameId);
-    return;
+
+  try {
+    await runTransaction(roomRef, (room: any) => {
+      if (!room) return room;
+
+      // 🚫 If game already started, abort
+      if (room.gameStatus === "playing" && room.gameId) {
+        return room;
+      }
+
+      // 🚫 If countdown hasn’t ended yet, abort
+      if (room.countdownEndAt && Date.now() < room.countdownEndAt) {
+        return room;
+      }
+
+      // ✅ Create new game ID
+      const newGameRef = push(gamesRef);
+      const gameId = newGameRef.key!;
+
+      const activeCards = Object.values(room.bingoCards || {}).filter(
+        (c: any) => c.claimed
+      );
+
+      const totalAmount = activeCards.length * room.betAmount * 0.9;
+
+      room.gameStatus = "playing";
+      room.gameId = gameId;
+      room.countdownEndAt = null;
+      room.countdownStartedBy = null;
+
+      // Create game entry
+      set(ref(rtdb, `games/${gameId}`), {
+        id: gameId,
+        roomId: room.id,
+        bingoCards: activeCards,
+        winners: [],
+        drawnNumbers: [],
+        createdAt: Date.now(),
+        status: "playing",
+        amount: totalAmount,
+      });
+
+      return room;
+    });
+
+    // ✅ Start number drawing only once
+    get().drawNumbersLoop();
+  } catch (err) {
+    console.error("❌ Error starting game:", err);
   }
-
-  // ✅ collect claimed cards
-  const activeCards = bingoCards.filter(c => c.claimed);
-
-  // ✅ total payout
-  const totalAmount = activeCards.length * currentRoom.betAmount * 0.9;
-
-  // ✅ create new game
-  const newGameRef = push(gamesRef);
-  const gameId = newGameRef.key;
-
-  const gameData = {
-    id: gameId,
-    roomId: currentRoom.id,
-    bingoCards: activeCards,
-    winners: [],
-    drawnNumbers: [],
-    createdAt: Date.now(),
-    status: "playing",
-    amount: totalAmount,
-  };
-
-  // ✅ atomically update room + new game
-  await update(ref(rtdb), {
-    [`rooms/${currentRoom.id}/gameStatus`]: "playing",
-    [`rooms/${currentRoom.id}/gameId`]: gameId,
-    [`rooms/${currentRoom.id}/countdownStartedBy`]: null,
-    [`rooms/${currentRoom.id}/countdownEndAt`]: null,
-    [`games/${gameId}`]: gameData,
-  });
-
-  // ✅ start number drawing process
-  get().drawNumbersLoop();
-
-  console.log("✅ Game started:", gameData);
 },
 
 

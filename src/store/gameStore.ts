@@ -24,7 +24,6 @@ interface Room {
   winner?: string;
   payout?: number;
   countdownEndAt: number, 
-  lastCalledNumber:number,
   players?: { [id: string]: { id: string; username: string; betAmount: number; cardId: string } };
   gameId?: string;
 }
@@ -108,6 +107,7 @@ drawNumbersLoop: () => {
     }
   }, 4000); // every 4s
 },
+// inside useGameStore
 startGameIfCountdownEnded: async () => {
   const { currentRoom } = get();
   if (!currentRoom) return;
@@ -115,24 +115,27 @@ startGameIfCountdownEnded: async () => {
   const roomRef = ref(rtdb, `rooms/${currentRoom.id}`);
   const gamesRef = ref(rtdb, "games");
 
-  // 🔑 generate stable gameId before transaction
+  // Generate a stable gameId BEFORE transaction
   const newGameRef = push(gamesRef);
   const gameId = newGameRef.key!;
 
   await runTransaction(roomRef, (room: any) => {
     if (!room) return room;
 
-    // only start if countdown expired and still in countdown
+    // 1. Only proceed if countdown is active and expired
     if (room.gameStatus !== "countdown" || !room.countdownEndAt) return room;
     if (Date.now() < room.countdownEndAt) return room;
 
-    // collect claimed cards
+    // 2. Don’t create a new game if one already exists
+    if (room.gameId) return room;
+
+    // 3. Collect claimed cards
     const activeCards = Object.values(room.bingoCards || {}).filter(
       (c: any) => c.claimed
     );
 
     if (activeCards.length < 2) {
-      // not enough players → reset room
+      // Reset to waiting if not enough players
       room.gameStatus = "waiting";
       room.countdownEndAt = null;
       room.countdownStartedBy = null;
@@ -141,13 +144,13 @@ startGameIfCountdownEnded: async () => {
 
     const totalAmount = activeCards.length * room.betAmount * 0.9;
 
-    // ✅ flip room state
+    // 4. Flip state to playing
     room.gameStatus = "playing";
     room.gameId = gameId;
     room.countdownStartedBy = null;
     room.countdownEndAt = null;
 
-    // embed newGame so we can persist it after commit
+    // Temporarily store new game in room (so we can write it later)
     room._newGame = {
       id: gameId,
       roomId: room.id,
@@ -166,13 +169,13 @@ startGameIfCountdownEnded: async () => {
       if (room._newGame) {
         const { _newGame } = room;
 
-        // ✅ save new game under /games
+        // ✅ Save game under /games
         await fbset(ref(rtdb, `games/${_newGame.id}`), _newGame);
 
-        // cleanup _newGame marker
+        // Cleanup temporary marker
         await update(roomRef, { _newGame: null });
 
-        // ✅ start loop only on the client who committed
+        // ✅ Start number drawing
         get().drawNumbersLoop();
 
         console.log("✅ Game started:", _newGame);
@@ -180,6 +183,7 @@ startGameIfCountdownEnded: async () => {
     }
   });
 },
+
 
   fetchRooms: () => {
     const roomsRef = ref(rtdb, 'rooms');

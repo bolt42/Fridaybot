@@ -244,21 +244,23 @@ return (
         {/* Card header */}
         <div className="flex justify-between items-center mb-1">
           <h3 className="font-bold text-sm">{t('select_card')}</h3>
-          <select
-            value={selectedCard?.id ?? ''}
-            onChange={(e) => selectCard(e.target.value)}
-            className="bg-white/20 text-white rounded px-1 py-0.5 text-[10px]"
-          >
-            <option value="" disabled>Select Card</option>
-            {bingoCards
-              .slice()
-              .sort((a, b) => a.serialNumber - b.serialNumber)
-              .map((card) => (
-                <option key={card.id} value={card.id} disabled={card.claimed}>
-                  Card {card.serialNumber} {card.claimed ? "(claimed)" : ""}
-                </option>
-              ))}
-          </select>
+         <select
+  value={selectedCard?.id ?? ''}
+  onChange={(e) => handleCardSelect(e.target.value)}
+  className="bg-white/20 text-white rounded px-1 py-0.5 text-[10px]"
+  disabled={isBetActive} // ✅ disable dropdown once bet is active
+>
+  <option value="" disabled>Select Card</option>
+  {bingoCards
+    .slice()
+    .sort((a, b) => a.serialNumber - b.serialNumber)
+    .map((card) => (
+      <option key={card.id} value={card.id} disabled={card.claimed}>
+        Card {card.serialNumber} {card.claimed ? "(claimed)" : ""}
+      </option>
+    ))}
+</select>
+
         </div>
 
         {/* Bingo Header */}

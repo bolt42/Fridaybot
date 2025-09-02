@@ -59,7 +59,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
 
 joinRoom: (roomId: string) => {
-  const roomRef = ref(rtdb, 'rooms/' + roomId);
+  const roomRef = ref(rtdb, "rooms/" + roomId);
 
   onValue(roomRef, (snapshot) => {
     if (!snapshot.exists()) {
@@ -75,8 +75,27 @@ joinRoom: (roomId: string) => {
 
     // ✅ Count how many players actually placed bets (claimed cards)
     const activePlayers = updatedRoom.players
-      ? Object.values(updatedRoom.players).filter((p: any) => p.betAmount && p.cardId)
+      ? Object.values(updatedRoom.players).filter(
+          (p: any) => p.betAmount && p.cardId
+        )
       : [];
+
+    // ❌ Cancel stale countdown if <2 players
+    if (
+      activePlayers.length < 2 &&
+      updatedRoom.gameStatus === "countdown" &&
+      updatedRoom.countdown
+    ) {
+      const countdownRef = ref(rtdb, `rooms/${roomId}`);
+      (async () => {
+        await update(countdownRef, {
+          gameStatus: "waiting",
+          countdown: null,
+          countdownStartedBy: null,
+        });
+      })();
+      return;
+    }
 
     // ✅ Only start countdown if 2+ players are ACTIVE (have bet & card)
     if (
@@ -102,10 +121,12 @@ joinRoom: (roomId: string) => {
           sec--;
 
           // 🔹 Re-check active players every tick
-          const snapshot = await get(roomRef);
-          const latestRoom = snapshot.val();
+          const latestSnap = await get(roomRef);
+          const latestRoom = latestSnap.val();
           const stillActivePlayers = latestRoom?.players
-            ? Object.values(latestRoom.players).filter((p: any) => p.betAmount && p.cardId)
+            ? Object.values(latestRoom.players).filter(
+                (p: any) => p.betAmount && p.cardId
+              )
             : [];
 
           // ❌ Cancel countdown if fewer than 2 active players remain
@@ -120,11 +141,14 @@ joinRoom: (roomId: string) => {
           }
 
           // ✅ Continue countdown
-          await update(countdownRef, { countdown: sec });
-
-          if (sec <= 0) {
+          if (sec > 0) {
+            await update(countdownRef, { countdown: sec });
+          } else {
             clearInterval(timer);
-            await update(countdownRef, { gameStatus: "playing" });
+            await update(countdownRef, {
+              gameStatus: "playing",
+              countdown: null,
+            });
           }
         }, 1000);
       })();

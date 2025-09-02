@@ -220,14 +220,17 @@ return (
     </div>
 
     {/* Countdown overlay ONLY on top of numbers grid */}
-    {currentRoom?.gameStatus === "countdown" && currentRoom.countdown && (
-      <div className="absolute inset-0 bg-black/70 flex items-center justify-center rounded">
-        <div className="bg-white text-black rounded-xl text-center shadow-xl mx-[10%] w-[80%]">
-          <h2 className="text-xl font-bold mb-2">Game starting soon</h2>
-          <p className="text-4xl font-mono">{currentRoom.countdown}s</p>
-        </div>
-      </div>
-    )}
+   {currentRoom?.gameStatus === "countdown" &&
+ currentRoom.countdown !== null &&
+ currentRoom.countdown > 0 && (
+  <div className="absolute inset-0 bg-black/70 flex items-center justify-center rounded">
+    <div className="bg-white text-black rounded-xl text-center shadow-xl mx-[10%] w-[80%]">
+      <h2 className="text-xl font-bold mb-2">Game starting soon</h2>
+      <p className="text-4xl font-mono">{currentRoom.countdown}s</p>
+    </div>
+  </div>
+)}
+
   </div>
 </div>
 

@@ -63,14 +63,17 @@ const Room: React.FC = () => {
     }
   }, [roomId, joinRoom]);
   
-  React.useEffect(() => {
-    if (userCard) {
-    selectCard(userCard.id); // auto-select the user's card
-    setHasBet(true); // ✅ mark that the user already has a bet
+React.useEffect(() => {
+  if (!userCard) return;
+
+  // only select if no card is selected, or it's different
+  if (!selectedCard || selectedCard.id !== userCard.id) {
+    selectCard(userCard.id);
   }
- 
- 
-  }, [userCard,currentRoom?.gameStatus, selectCard]);
+
+  setHasBet(true); // ✅ but don't reset card selection if it's already consistent
+}, [userCard, selectedCard, selectCard]);
+
   // Start countdown if 2+ players bet
 React.useEffect(() => {
   if (!currentRoom || !currentRoom.players) return; // ✅ guard against null

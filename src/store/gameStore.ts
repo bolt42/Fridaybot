@@ -64,18 +64,6 @@ drawNumbersLoop: () => {
       clearInterval(interval);
       // game ends automatically after 25 draws
       await update(roomRef, { gameStatus: "ended" });
-      const cardsRef = ref(rtdb, `rooms/${currentRoom.id}/bingoCards`);
-      const snapshot = await get(cardsRef);
-  if (snapshot.exists()) {
-    const updates: any = {};
-    snapshot.forEach((cardSnap) => {
-      const cardId = cardSnap.key;
-      updates[cardId + "/claimed"] = false;
-      updates[cardId + "/claimedBy"] = null;
-    });
-    await update(cardsRef, updates);
-  }
-
       return;
     }
 

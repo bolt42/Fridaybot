@@ -5,17 +5,34 @@ import { useLanguageStore } from '../store/languageStore';
 import { useGameStore } from '../store/gameStore';
 import { useAuthStore } from '../store/authStore';
 import BingoGrid from '../components/BingoGrid';
-const CountdownOverlay = ({ countdownEndAt }: { countdownEndAt: number }) => {
+const CountdownOverlay = ({ countdownEndAt, roomId }: { countdownEndAt: number, roomId: string }) => {
   const [remaining, setRemaining] = React.useState(
     Math.max(0, Math.floor((countdownEndAt - Date.now()) / 1000))
   );
 
   React.useEffect(() => {
-    const interval = setInterval(() => {
-      setRemaining(Math.max(0, Math.floor((countdownEndAt - Date.now()) / 1000)));
+    const interval = setInterval(async () => {
+      const timeLeft = Math.max(0, Math.floor((countdownEndAt - Date.now()) / 1000));
+      setRemaining(timeLeft);
+
+      // ✅ when countdown ends, update game status
+      if (timeLeft <= 0) {
+        clearInterval(interval);
+
+        const { user } = useAuthStore.getState();
+        if (user?.telegramId) {
+          const countdownRef = ref(rtdb, `rooms/${roomId}`);
+          await update(countdownRef, {
+            gameStatus: "playing",
+            countdownEndAt: null,
+            countdownStartedBy: null,
+          });
+        }
+      }
     }, 1000);
+
     return () => clearInterval(interval);
-  }, [countdownEndAt]);
+  }, [countdownEndAt, roomId]);
 
   if (remaining <= 0) return null;
 

@@ -49,3 +49,67 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: err.message });
   }
 }
+function startNumberDraw(roomId, gameId) {
+  const gameRef = ref(rtdb, `games/${gameId}`);
+  const roomRef = ref(rtdb, `rooms/${roomId}`);
+
+  const ranges = [
+    Array.from({ length: 15 }, (_, i) => i + 1),   // 1–15
+    Array.from({ length: 15 }, (_, i) => i + 16),  // 16–30
+    Array.from({ length: 15 }, (_, i) => i + 31),  // 31–45
+    Array.from({ length: 15 }, (_, i) => i + 46),  // 46–60
+    Array.from({ length: 15 }, (_, i) => i + 61),  // 61–75
+  ];
+
+  let bucketIndex = 0;
+  let drawn = [];
+
+  const interval = setInterval(async () => {
+    if (bucketIndex >= ranges.length) {
+      clearInterval(interval);
+
+      // ✅ mark room/game as ended
+      await update(roomRef, {
+        gameStatus: "ended",
+        activeGameId: null,
+        countdownEndAt: null,
+        countdownStartedBy: null,
+      });
+      await update(gameRef, { status: "ended" });
+
+      return;
+    }
+
+    const bucket = ranges[bucketIndex];
+    if (bucket.length === 0) {
+      bucketIndex++;
+      return;
+    }
+
+    const idx = Math.floor(Math.random() * bucket.length);
+    const num = bucket[idx];
+    bucket.splice(idx, 1);
+
+    drawn.push(num);
+
+    await update(gameRef, { drawnNumbers: drawn });
+    await update(roomRef, {
+      calledNumbers: drawn,
+      lastCalledNumber: num,
+    });
+
+    // after 5 numbers, move to next column
+    const numbersInBucket = drawn.filter((n) => {
+      if (bucketIndex === 0) return n <= 15;
+      if (bucketIndex === 1) return n >= 16 && n <= 30;
+      if (bucketIndex === 2) return n >= 31 && n <= 45;
+      if (bucketIndex === 3) return n >= 46 && n <= 60;
+      if (bucketIndex === 4) return n >= 61 && n <= 75;
+      return false;
+    });
+
+    if (numbersInBucket.length >= 5) {
+      bucketIndex++;
+    }
+  }, 4000);
+}

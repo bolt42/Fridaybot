@@ -48,75 +48,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   bingoCards: [],
   loading: false,
  // add this
-drawNumbersLoop: () => {
-  const { currentRoom } = get();
-  if (!currentRoom || currentRoom.gameStatus !== "playing") return;
 
-  const gameRef = ref(rtdb, `games/${currentRoom.gameId}`);
-  const roomRef = ref(rtdb, `rooms/${currentRoom.id}`);
-
-  // Create 5 buckets (B-I-N-G-O)
-  const ranges = [
-    Array.from({ length: 15 }, (_, i) => i + 1),   // 1–15
-    Array.from({ length: 15 }, (_, i) => i + 16),  // 16–30
-    Array.from({ length: 15 }, (_, i) => i + 31),  // 31–45
-    Array.from({ length: 15 }, (_, i) => i + 46),  // 46–60
-    Array.from({ length: 15 }, (_, i) => i + 61),  // 61–75
-  ];
-
-  let bucketIndex = 0; // start with B column
-  let drawn: number[] = [];
-
-  const interval = setInterval(async () => {
-    // stop if we exhausted all buckets
-    if (bucketIndex >= ranges.length) {
-      clearInterval(interval);
-
-      // ✅ Reset room when game ends
-      await update(roomRef, {
-        gameStatus: "ended",
-        gameId: null,              // clear game reference
-        countdownEndAt: null,      // reset countdown
-        countdownStartedBy: null,  // reset who started it
-      });
-
-      return;
-    }
-
-    const bucket = ranges[bucketIndex];
-    if (bucket.length === 0) {
-      bucketIndex++; // move to next column
-      return;
-    }
-
-    // draw one random number from current bucket
-    const idx = Math.floor(Math.random() * bucket.length);
-    const num = bucket[idx];
-    bucket.splice(idx, 1); // remove from bucket
-    drawn.push(num);
-
-    // ✅ append new drawn number
-    await update(gameRef, { drawnNumbers: drawn });
-    await update(roomRef, {
-      calledNumbers: drawn,
-      lastCalledNumber: num, // keep track of latest
-    });
-
-    // after 5 numbers, move to next bucket
-    if (
-      drawn.filter((n) => {
-        if (bucketIndex === 0) return n <= 15;
-        if (bucketIndex === 1) return n >= 16 && n <= 30;
-        if (bucketIndex === 2) return n >= 31 && n <= 45;
-        if (bucketIndex === 3) return n >= 46 && n <= 60;
-        if (bucketIndex === 4) return n >= 61 && n <= 75;
-        return false;
-      }).length >= 5
-    ) {
-      bucketIndex++;
-    }
-  }, 4000); // every 4s
-},
 startGameIfCountdownEnded: async () => {
   const { currentRoom } = get();
   if (!currentRoom) return;
@@ -125,10 +57,8 @@ startGameIfCountdownEnded: async () => {
   if (Date.now() < currentRoom.countdownEndAt) return;
 
   try {
-    const res = await fetch("/api/start-game", {
+    const res = await fetch(`/api/start-game?roomId=${currentRoom.id}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ roomId: currentRoom.id }),
     });
 
     let data;
@@ -145,14 +75,12 @@ startGameIfCountdownEnded: async () => {
     }
 
     console.log("✅ Game created on server:", data.gameId);
-
-    // Only start loop if *this client* is in the game
-    get().drawNumbersLoop();
+    // ❌ remove drawNumbersLoop
+    // server now runs the loop
   } catch (err) {
     console.error("❌ Error calling start-game API:", err);
   }
 },
-
 
   fetchRooms: () => {
     const roomsRef = ref(rtdb, 'rooms');

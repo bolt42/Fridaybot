@@ -5,6 +5,9 @@ import { useLanguageStore } from '../store/languageStore';
 import { useGameStore } from '../store/gameStore';
 import { useAuthStore } from '../store/authStore';
 import BingoGrid from '../components/BingoGrid';
+
+import { ref,set as fbset , update} from 'firebase/database';
+import { rtdb } from '../firebase/config';
 const CountdownOverlay = ({ countdownEndAt, roomId }: { countdownEndAt: number, roomId: string }) => {
   const [remaining, setRemaining] = React.useState(
     Math.max(0, Math.floor((countdownEndAt - Date.now()) / 1000))

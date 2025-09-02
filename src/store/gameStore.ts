@@ -39,6 +39,8 @@ interface GameState {
   placeBet: () => Promise<boolean>;
   checkBingo: () => Promise<boolean>;
   generateBingoCards: (count: number) => BingoCard[];
+   drawNumbersLoop: () => void;
+  startGameIfCountdownEnded: () => Promise<void>;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({

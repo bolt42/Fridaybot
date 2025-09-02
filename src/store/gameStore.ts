@@ -57,9 +57,11 @@ startGameIfCountdownEnded: async () => {
   if (Date.now() < currentRoom.countdownEndAt) return;
 
   try {
-    const res = await fetch(`/api/start-game?roomId=${currentRoom.id}`, {
-      method: "POST",
-    });
+    const res =await fetch("/api/start-game", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ roomId: currentRoom.id }),
+});
 
     let data;
     try {

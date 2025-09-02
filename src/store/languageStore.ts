@@ -44,7 +44,6 @@ const translations = {
     'you_won': 'Congratulations! You won!',
     'not_a_winner': 'Not a winner this time.',
     'game_ended': 'Game ended. Starting new round...',
-    'next_game_in': 'Next game in',
     
     // Game
     'b_column': 'B (1-15)',
@@ -94,7 +93,6 @@ const translations = {
     'you_won': 'እንኳን ደስ አለዎት! አሸንፈዋል!',
     'not_a_winner': 'በዚህ ጊዜ አሸናፊ አይደሉም።',
     'game_ended': 'ጨዋታ ተጠናቋል። አዲስ ዙር እየጀመረ...',
-    'next_game_in': 'አዲስ ጨዋታ በ',
     
     // Game
     'b_column': 'ቢ (1-15)',

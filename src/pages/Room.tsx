@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { Clock } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Users, Coins, Clock, Trophy } from 'lucide-react';
 import { useLanguageStore } from '../store/languageStore';
 import { useGameStore } from '../store/gameStore';
 import { useAuthStore } from '../store/authStore';
+import BingoGrid from '../components/BingoGrid';
 const CountdownOverlay = ({ countdownEndAt }: { countdownEndAt: number }) => {
   const [remaining, setRemaining] = React.useState(
     Math.max(0, Math.floor((countdownEndAt - Date.now()) / 1000))
@@ -28,38 +29,10 @@ const CountdownOverlay = ({ countdownEndAt }: { countdownEndAt: number }) => {
   );
 };
 
-// ✅ New component for 3-minute countdown after game ends
-const NextGameCountdown = ({ nextGameCountdown }: { nextGameCountdown: number }) => {
-  const { t } = useLanguageStore();
-  const [remaining, setRemaining] = React.useState(
-    Math.max(0, Math.floor((nextGameCountdown - Date.now()) / 1000))
-  );
-
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      setRemaining(Math.max(0, Math.floor((nextGameCountdown - Date.now()) / 1000)));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [nextGameCountdown]);
-
-  if (remaining <= 0) return null;
-
-  const minutes = Math.floor(remaining / 60);
-  const seconds = remaining % 60;
-
-  return (
-    <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg p-3 mb-3 text-center">
-      <div className="flex items-center justify-center space-x-2">
-        <Clock className="w-5 h-5" />
-        <span className="font-bold">{t('next_game_in')}: {minutes}:{seconds.toString().padStart(2, '0')}</span>
-      </div>
-    </div>
-  );
-};
-
 
 const Room: React.FC = () => {
   const { roomId } = useParams();
+  const navigate = useNavigate();
   const { t } = useLanguageStore();
    
 
@@ -77,6 +50,7 @@ const Room: React.FC = () => {
  const cardNumbers = displayedCard?.numbers ?? [];
   const [markedNumbers, setMarkedNumbers] = useState<number[]>([]);
   const [hasBet, setHasBet] = useState(false);
+  const [gameMessage, setGameMessage] = useState('');
   
 
   const cancelBet = useGameStore((state) => state.cancelBet);
@@ -111,13 +85,11 @@ React.useEffect(() => {
 React.useEffect(() => {
   if (!currentRoom || !currentRoom.players) return; // ✅ guard against null
 
-  // ✅ Count active players for countdown logic
   const activePlayers = Object.values(currentRoom.players).filter(
     (p: any) => p.betAmount && p.betAmount > 0
   );
 
-  // ✅ This effect is for monitoring active players
-  console.log(`Active players in room ${currentRoom.id}: ${activePlayers.length}`);
+  
 }, [currentRoom]);
 
 React.useEffect(() => {
@@ -146,7 +118,7 @@ React.useEffect(() => {
   if (!displayedCard || !currentRoom) return;
 
   if (!currentRoom.isDemoRoom && (user?.balance || 0) < currentRoom.betAmount) {
-    console.log('Insufficient balance!');
+    setGameMessage('Insufficient balance!');
     return;
   }
 
@@ -157,7 +129,7 @@ React.useEffect(() => {
     if (!currentRoom.isDemoRoom) {
       await updateBalance(-currentRoom.betAmount);
     }
-    console.log('Bet placed! Waiting for other players...');
+    setGameMessage('Bet placed! Waiting for other players...');
     
    
   }
@@ -170,7 +142,7 @@ const handleCancelBet = async () => {
   const success = await cancelBet(cardId);
   if (success) {
     setHasBet(false);
-    console.log('Bet canceled');
+    setGameMessage('Bet canceled');
   } else {
     console.error("❌ Failed to cancel bet");
   }
@@ -183,18 +155,21 @@ const handleCancelBet = async () => {
     );
   };
 
-  // ✅ Bingo check function (can be used later)
   const handleBingoClick = async () => {
     const isBingo = await checkBingo();
     if (isBingo && currentRoom) {
       const payout = currentRoom.currentPlayers * currentRoom.betAmount * 0.9;
-      console.log(t('you_won'));
+      setGameMessage(t('you_won'));
       if (!currentRoom.isDemoRoom) {
         await updateBalance(payout);
       }
     } else {
-      console.log(t('not_a_winner'));
+      setGameMessage(t('not_a_winner'));
     }
+    
+    setTimeout(() => {
+      setGameMessage('');
+    }, 3000);
   };
 
   if (!currentRoom) {
@@ -215,7 +190,7 @@ const handleCancelBet = async () => {
   : demoCalledNumbers;
 
 // Find this player's data inside the room
-const playerData = user?.telegramId ? currentRoom?.players?.[user.telegramId] : undefined;
+const playerData = currentRoom?.players?.[user?.telegramId];
 
 // True if backend says this player already bet
 const alreadyBetted = !!playerData?.betAmount && playerData.betAmount > 0;
@@ -246,17 +221,9 @@ return (
         {t('bet_amount')}: {currentRoom.betAmount}
       </div>
       <div className="bg-white/10 rounded text-center py-1 border border-white/20">
-        {t('numbers_called')}: {(() => {
-          const numbers = currentRoom?.calledNumbers;
-          return numbers && numbers.length > 0 ? numbers[numbers.length - 1] : "-";
-        })()}
+        {t('numbers_called')}: {(currentRoom?.calledNumbers?.length ?? 0) > 0 ? currentRoom.calledNumbers!.at(-1) : "-"}
       </div>
     </div>
-
-    {/* ✅ 3-minute countdown display */}
-    {currentRoom?.gameStatus === "ended" && currentRoom?.nextGameCountdown && (
-      <NextGameCountdown nextGameCountdown={currentRoom.nextGameCountdown} />
-    )}
 
     {/* Main content row */}
     <div className="flex flex-row gap-2 w-full max-w-full h-full">

@@ -8,7 +8,6 @@ interface BingoCard {
   serialNumber: number;
   claimed: boolean;
   claimedBy?: string;
-  roomId?: string; // ✅ Add roomId property
 }
 
 interface Room {
@@ -27,9 +26,6 @@ interface Room {
   countdownEndAt: number, 
   players?: { [id: string]: { id: string; username: string; betAmount: number; cardId: string } };
   gameId?: string;
-  gameEndedAt?: number; // ✅ When the game ended
-  nextGameCountdown?: number; // ✅ When next game countdown starts
-  lastCalledNumber?: number; // ✅ Last called number
 }
 interface GameState {
   rooms: Room[];
@@ -45,9 +41,6 @@ interface GameState {
   checkBingo: () => Promise<boolean>;
   generateBingoCards: (count: number) => BingoCard[];
   stopGame: (roomId: string) => Promise<boolean>; // ✅ Add stop game function
-  cancelBet: (cardId?: string) => Promise<boolean>; // ✅ Add cancel bet function
-  startGameIfCountdownEnded: () => Promise<void>; // ✅ Add start game function
-  checkRoomReset: () => void; // ✅ Add room reset check function
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -406,18 +399,6 @@ if (user) {
     } catch (err) {
       console.error("❌ Error stopping game:", err);
       return false;
-    }
-  },
-
-  // ✅ Check if room should be reset after countdown
-  checkRoomReset: () => {
-    const { currentRoom } = get();
-    if (!currentRoom?.nextGameCountdown) return;
-
-    const now = Date.now();
-    if (now >= currentRoom.nextGameCountdown) {
-      // Room should be reset, but this will be handled by the server
-      console.log("⏰ Room countdown ended, waiting for server reset...");
     }
   }
 

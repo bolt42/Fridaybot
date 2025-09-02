@@ -1,44 +1,44 @@
-// /pages/api/start-game.ts
-import { NextApiRequest, NextApiResponse } from "next";
-import { rtdb } from "../src/firebase/config";
+// /pages/api/start-game.js (or .ts if using TS)
+import { rtdb } from "../src/firebase/config.js";
 import { ref, runTransaction, push, update } from "firebase/database";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    res.status(405).json({ error: "Method not allowed" });
+    return;
   }
 
   try {
     const { roomId } = req.body;
     if (!roomId) {
-      return res.status(400).json({ error: "Missing roomId" });
+      res.status(400).json({ error: "Missing roomId" });
+      return;
     }
 
     const roomRef = ref(rtdb, `rooms/${roomId}`);
     const gamesRef = ref(rtdb, "games");
 
-    let createdGameId: string | null = null;
+    let createdGameId = null;
 
-    // 🔒 Transaction prevents multiple creations
-    await runTransaction(roomRef, (room: any) => {
+    await runTransaction(roomRef, (room) => {
       if (!room) return room;
 
-      // Already playing → abort
+      // Already started → skip
       if (room.gameStatus === "playing" && room.gameId) {
         return room;
       }
 
-      // Countdown not finished → abort
+      // Countdown not finished → skip
       if (room.countdownEndAt && Date.now() < room.countdownEndAt) {
         return room;
       }
 
       // ✅ Create new game
       const newGameRef = push(gamesRef);
-      createdGameId = newGameRef.key!;
+      createdGameId = newGameRef.key;
 
       const activeCards = Object.values(room.bingoCards || {}).filter(
-        (c: any) => c.claimed
+        (c) => c.claimed
       );
       const totalAmount = activeCards.length * room.betAmount * 0.9;
 
@@ -47,7 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       room.countdownEndAt = null;
       room.countdownStartedBy = null;
 
-      // Create game entry outside transaction (safe async)
+      // Add game data
       update(ref(rtdb, `games/${createdGameId}`), {
         id: createdGameId,
         roomId,
@@ -62,9 +62,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return room;
     });
 
-    return res.status(200).json({ success: true, gameId: createdGameId });
-  } catch (err: any) {
+    res.status(200).json({ success: true, gameId: createdGameId });
+  } catch (err) {
     console.error("❌ start-game error:", err);
-    return res.status(500).json({ error: err.message || "Server error" });
+    res.status(500).json({ error: err.message || "Server error" });
   }
 }

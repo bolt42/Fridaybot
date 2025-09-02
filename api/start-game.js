@@ -16,7 +16,10 @@ export default async function handler(req, res) {
     let activeCards = {};
     const result = await runTransaction(roomRef, (room) => {
       if (!room) return room;
-      if (room.gameStatus !== "countdown") return room;
+      // ✅ Prevent multiple games: check if already playing OR already has a gameId
+      if (room.gameStatus !== "countdown" || room.gameId) {
+        return; // Abort transaction - game already started or in progress
+      }
 
       activeCards = {};
       for (const [cardId, card] of Object.entries(room.bingoCards || {})) {
@@ -32,6 +35,18 @@ export default async function handler(req, res) {
     });
 
     if (!result.committed) {
+      // ✅ Check if game was already started by another client
+      const roomSnapshot = await get(roomRef);
+      const roomData = roomSnapshot.val();
+      
+      if (roomData?.gameId && roomData?.gameStatus === "playing") {
+        return res.status(200).json({ 
+          success: true, 
+          gameId: roomData.gameId,
+          message: "Game already started by another client" 
+        });
+      }
+      
       return res.status(400).json({ error: "Transaction aborted (maybe already playing)" });
     }
 
@@ -61,7 +76,17 @@ export default async function handler(req, res) {
 // -------------------
 // Number drawing loop
 // -------------------
+// ✅ Track active drawing loops to prevent duplicates
+const activeDrawingLoops = new Set();
+
 function startNumberDraw(roomId, gameId) {
+  // ✅ Prevent multiple drawing loops for the same game
+  if (activeDrawingLoops.has(gameId)) {
+    console.log(`⚠️ Drawing loop already active for game ${gameId}`);
+    return;
+  }
+  
+  activeDrawingLoops.add(gameId);
   const gameRef = ref(rtdb, `games/${gameId}`);
   const roomRef = ref(rtdb, `rooms/${roomId}`);
 
@@ -81,13 +106,17 @@ function startNumberDraw(roomId, gameId) {
       clearInterval(interval);
 
       await update(roomRef, {
-        gameStatus: "ended",
-        activeGameId: null,
+        gameStatus: "waiting", // ✅ Reset to waiting for next game
+        gameId: null, // ✅ Clear gameId
+        calledNumbers: [], // ✅ Clear called numbers
+        lastCalledNumber: null, // ✅ Clear last called number
         countdownEndAt: null,
         countdownStartedBy: null,
       });
       await update(gameRef, { status: "ended" });
 
+      // ✅ Clean up active drawing loop tracking
+      activeDrawingLoops.delete(gameId);
       return;
     }
 

@@ -33,6 +33,7 @@ interface GameState {
   selectedCard: BingoCard | null;
   bingoCards: BingoCard[];
   loading: boolean;
+  startingGame: boolean; // ✅ Prevent multiple simultaneous start game calls
   fetchRooms: () => void;
   joinRoom: (roomId: string) => void;
   selectCard: (cardId: string) => void;
@@ -47,14 +48,24 @@ export const useGameStore = create<GameState>((set, get) => ({
   selectedCard: null,
   bingoCards: [],
   loading: false,
+  startingGame: false, // ✅ Initialize startingGame flag
  // add this
 
 startGameIfCountdownEnded: async () => {
-  const { currentRoom } = get();
+  const { currentRoom, startingGame } = get();
   if (!currentRoom) return;
+
+  // ✅ Prevent multiple simultaneous calls
+  if (startingGame) {
+    console.log("⚠️ Game start already in progress, skipping...");
+    return;
+  }
 
   if (currentRoom.gameStatus !== "countdown" || !currentRoom.countdownEndAt) return;
   if (Date.now() < currentRoom.countdownEndAt) return;
+
+  // ✅ Set flag to prevent multiple calls
+  set({ startingGame: true });
 
   try {
     const res =await fetch("/api/start-game", {
@@ -81,6 +92,9 @@ startGameIfCountdownEnded: async () => {
     // server now runs the loop
   } catch (err) {
     console.error("❌ Error calling start-game API:", err);
+  } finally {
+    // ✅ Always reset the flag
+    set({ startingGame: false });
   }
 },
 

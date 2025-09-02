@@ -372,11 +372,20 @@ fetchBingoCards: () => {
         ? Object.entries(data).map(([id, value]: [string, any]) => ({ id, ...value }))
         : [];
       set({ bingoCards: cards });
-        const { user } = useAuthStore.getState();
-    if (user) {
-      const userCard = cards.find(c => c.claimedBy === user.telegramId);
-      set({ selectedCard: userCard || null });
-    }
+      const { user } = useAuthStore.getState();
+const { selectedCard } = get();
+
+if (user) {
+  const userCard = cards.find(c => c.claimedBy === user.telegramId);
+
+  // ✅ Only set if user has a claimed card OR nothing is selected yet
+  if (userCard && (!selectedCard || selectedCard.id !== userCard.id)) {
+    set({ selectedCard: userCard });
+  } else if (!userCard && !selectedCard) {
+    set({ selectedCard: null });
+  }
+}
+
     });
   }
 

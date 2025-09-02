@@ -64,6 +64,18 @@ drawNumbersLoop: () => {
       clearInterval(interval);
       // game ends automatically after 25 draws
       await update(roomRef, { gameStatus: "ended" });
+      const cardsRef = ref(rtdb, `rooms/${currentRoom.id}/bingoCards`);
+      const snapshot = await get(cardsRef);
+  if (snapshot.exists()) {
+    const updates: any = {};
+    snapshot.forEach((cardSnap) => {
+      const cardId = cardSnap.key;
+      updates[cardId + "/claimed"] = false;
+      updates[cardId + "/claimedBy"] = null;
+    });
+    await update(cardsRef, updates);
+  }
+
       return;
     }
 
@@ -114,9 +126,11 @@ startGameIfCountdownEnded: async () => {
   };
 
   // write both room + game atomically
-  await update(ref(rtdb), {
+await update(ref(rtdb), {
   [`rooms/${currentRoom.id}/gameStatus`]: "playing",
   [`rooms/${currentRoom.id}/gameId`]: gameId,
+  [`rooms/${currentRoom.id}/countdownStartedBy`]: null,
+  [`rooms/${currentRoom.id}/countdownEndAt`]: null,
   [`games/${gameId}`]: gameData,
 });
 

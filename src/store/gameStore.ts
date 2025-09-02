@@ -113,68 +113,47 @@ startGameIfCountdownEnded: async () => {
   const { currentRoom, bingoCards } = get();
   if (!currentRoom) return;
 
+  // Countdown not yet over
+  if (currentRoom.gameStatus !== "countdown" || !currentRoom.countdownEndAt) return;
+  if (Date.now() < currentRoom.countdownEndAt) return;
+
   const roomRef = ref(rtdb, `rooms/${currentRoom.id}`);
-  const gamesRef = ref(rtdb, "games");
+  const gamesRef = ref(rtdb, `games`);
 
-  await runTransaction(roomRef, (room: any) => {
-    if (!room) return room;
+  // ✅ collect claimed cards
+  const activeCards = bingoCards.filter(c => c.claimed);
 
-    // Only start if countdown expired and still in countdown
-    if (room.gameStatus !== "countdown" || !room.countdownEndAt) return room;
-    if (Date.now() < room.countdownEndAt) return room;
+  // ✅ total payout
+  const totalAmount = activeCards.length * currentRoom.betAmount * 0.9;
 
-    // Collect claimed cards
-    const activeCards = Object.values(room.bingoCards || {}).filter((c: any) => c.claimed);
+  // ✅ create new game
+  const newGameRef = push(gamesRef);
+  const gameId = newGameRef.key;
 
-    // Compute total
-    const totalAmount = activeCards.length * room.betAmount * 0.9;
+  const gameData = {
+    id: gameId,
+    roomId: currentRoom.id,
+    bingoCards: activeCards,
+    winners: [],
+    drawnNumbers: [],
+    createdAt: Date.now(),
+    status: "playing",
+    amount: totalAmount,
+  };
 
-    // Create game ID only once (inside transaction so only one client succeeds)
-    const newGameRef = push(gamesRef);
-    const gameId = newGameRef.key!;
+  // write both room + game atomically
+await update(ref(rtdb), {
+  [`rooms/${currentRoom.id}/gameStatus`]: "playing",
+  [`rooms/${currentRoom.id}/gameId`]: gameId,
+  [`rooms/${currentRoom.id}/countdownStartedBy`]: null,
+  [`rooms/${currentRoom.id}/countdownEndAt`]: null,
+  [`games/${gameId}`]: gameData,
+});
 
-    const gameData = {
-      id: gameId,
-      roomId: room.id,
-      bingoCards: activeCards,
-      winners: [],
-      drawnNumbers: [],
-      createdAt: Date.now(),
-      status: "playing",
-      amount: totalAmount,
-    };
+// ✅ start number drawing process
+get().drawNumbersLoop();
 
-    // Mutate room atomically
-    room.gameStatus = "playing";
-    room.gameId = gameId;
-    room.countdownStartedBy = null;
-    room.countdownEndAt = null;
-
-    // Attach the game under /games too
-    // ⚠️ Trick: embed it under a special key, will sync after commit
-    room._newGame = gameData;
-
-    return room;
-  }).then(async (result) => {
-    if (result.committed && result.snapshot.exists()) {
-      const room = result.snapshot.val();
-
-      if (room._newGame) {
-        const { _newGame, ...cleanRoom } = room;
-
-        // Write game outside room (only once)
-        await set(ref(rtdb, `games/${_newGame.id}`), _newGame);
-
-        // Clean up _newGame helper
-        await update(roomRef, { _newGame: null });
-
-        // Start drawing numbers only once
-        get().drawNumbersLoop();
-
-        console.log("✅ Game started:", _newGame);
-      }
-    }
-  });
+  console.log("✅ Game started:", gameData);
 },
 
   fetchRooms: () => {

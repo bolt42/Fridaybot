@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from "uuid";
 
 export default async function handler(req, res) {
   try {
-    const { roomId } = req.body; // ✅ must be sent in body
+    const { roomId } = req.body;
     if (!roomId) {
       return res.status(400).json({ error: "Missing roomId" });
     }
@@ -12,35 +12,42 @@ export default async function handler(req, res) {
     const roomRef = ref(rtdb, `rooms/${roomId}`);
     const gameId = uuidv4();
 
-    await runTransaction(roomRef, (room) => {
+    // Step 1: reserve game inside the room (transaction-safe)
+    let activeCards = {};
+    const result = await runTransaction(roomRef, (room) => {
       if (!room) return room;
       if (room.gameStatus !== "countdown") return room;
 
-      const activeCards = {};
+      activeCards = {};
       for (const [cardId, card] of Object.entries(room.bingoCards || {})) {
         if (card.claimed) {
           activeCards[cardId] = card;
         }
       }
 
-      fbset(ref(rtdb, `games/${gameId}`), {
-        id: gameId,
-        roomId,
-        bingoCards: activeCards,
-        winners: [],
-        drawnNumbers: [],
-        createdAt: Date.now(),
-        status: "playing",
-        amount: room.totalAmount || 0,
-      });
-
+      // ✅ only modify the room object
       room.gameStatus = "playing";
       room.gameId = gameId;
-
       return room;
     });
 
-    // ✅ Now start number drawing
+    if (!result.committed) {
+      return res.status(400).json({ error: "Transaction aborted (maybe already playing)" });
+    }
+
+    // Step 2: create the game outside the transaction
+    await fbset(ref(rtdb, `games/${gameId}`), {
+      id: gameId,
+      roomId,
+      bingoCards: activeCards,
+      winners: [],
+      drawnNumbers: [],
+      createdAt: Date.now(),
+      status: "playing",
+      amount: result.snapshot.val().totalAmount || 0,
+    });
+
+    // Step 3: start drawing numbers
     startNumberDraw(roomId, gameId);
 
     return res.status(200).json({ success: true, gameId });
@@ -49,6 +56,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: err.message });
   }
 }
+
 
 // -------------------
 // Number drawing loop

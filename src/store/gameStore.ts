@@ -111,54 +111,68 @@ startGameIfCountdownEnded: async () => {
   const { currentRoom, bingoCards } = get();
   if (!currentRoom) return;
 
-  // Only proceed if countdown is over
-  if (currentRoom.gameStatus !== "countdown" || !currentRoom.countdownEndAt) return;
-  if (Date.now() < currentRoom.countdownEndAt) return;
-
   const roomRef = ref(rtdb, `rooms/${currentRoom.id}`);
   const gamesRef = ref(rtdb, "games");
 
-  // ✅ Check if a game is already active for this room
-  if (currentRoom.gameId && currentRoom.gameStatus === "playing") {
-    console.log("⚠️ A game is already active for this room:", currentRoom.gameId);
-    return;
-  }
+  // ✅ Transaction to ensure only one winner starts the game
+  await runTransaction(roomRef, (room: any) => {
+    if (!room) return room;
 
-  // ✅ collect claimed cards
-  const activeCards = bingoCards.filter(c => c.claimed);
+    // Countdown not finished → abort
+    if (room.gameStatus !== "countdown" || !room.countdownEndAt || Date.now() < room.countdownEndAt) {
+      return room;
+    }
 
-  // ✅ total payout
-  const totalAmount = activeCards.length * currentRoom.betAmount * 0.9;
+    // If a game already exists → do nothing
+    if (room.gameId || room.gameStatus === "playing") {
+      return room;
+    }
 
-  // ✅ create new game
-  const newGameRef = push(gamesRef);
-  const gameId = newGameRef.key;
+    // ✅ create new game ID here (but only inside this winning transaction)
+    const newGameRef = push(gamesRef);
+    const gameId = newGameRef.key;
 
-  const gameData = {
-    id: gameId,
-    roomId: currentRoom.id,
-    bingoCards: activeCards,
-    winners: [],
-    drawnNumbers: [],
-    createdAt: Date.now(),
-    status: "playing",
-    amount: totalAmount,
-  };
+    // collect claimed cards
+    const activeCards = Object.values(room.bingoCards || {}).filter((c: any) => c.claimed);
+    const totalAmount = activeCards.length * room.betAmount * 0.9;
 
-  // ✅ atomically update room + new game
-  await update(ref(rtdb), {
-    [`rooms/${currentRoom.id}/gameStatus`]: "playing",
-    [`rooms/${currentRoom.id}/gameId`]: gameId,
-    [`rooms/${currentRoom.id}/countdownStartedBy`]: null,
-    [`rooms/${currentRoom.id}/countdownEndAt`]: null,
-    [`games/${gameId}`]: gameData,
+    const gameData = {
+      id: gameId,
+      roomId: room.id,
+      bingoCards: activeCards,
+      winners: [],
+      drawnNumbers: [],
+      createdAt: Date.now(),
+      status: "playing",
+      amount: totalAmount,
+    };
+
+    // attach to room atomically
+    room.gameStatus = "playing";
+    room.gameId = gameId;
+    room.countdownEndAt = null;
+    room.countdownStartedBy = null;
+
+    // 🚨 we don’t actually write the game here,
+    // just reserve the gameId — we’ll write after transaction succeeds
+    (room as any)._pendingGameData = gameData;
+
+    return room;
+  }).then(async (result) => {
+    if (result.committed && result.snapshot.val()?._pendingGameData) {
+      const gameData = result.snapshot.val()._pendingGameData;
+      delete gameData._pendingGameData;
+
+      // ✅ Write the game object separately
+      await fbset(ref(rtdb, `games/${gameData.id}`), gameData);
+
+      // ✅ Start number drawing loop (only on the client who won)
+      get().drawNumbersLoop();
+      console.log("✅ Game started:", gameData);
+    }
   });
+}
 
-  // ✅ start number drawing process
-  get().drawNumbersLoop();
-
-  console.log("✅ Game started:", gameData);
-},
 
 
   fetchRooms: () => {

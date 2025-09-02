@@ -83,7 +83,7 @@ joinRoom: (roomId: string) => {
   const countdownRef = ref(rtdb, `rooms/${roomId}`);
 
   // Only start if no one started it already
-  if (!updatedRoom.countdown && !updatedRoom.countdownStartedBy) {
+  if (!updatedRoom.countdown ) {
     await update(countdownRef, { 
       gameStatus: "countdown", 
       countdown: 30, 

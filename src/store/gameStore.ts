@@ -203,9 +203,19 @@ joinRoom: (roomId: string) => {
   }
 
   const updatedRoom = { id: roomId, ...snapshot.val() } as Room;
-  set({ currentRoom: updatedRoom });
+set({ currentRoom: updatedRoom });
+
+// Only the one who started countdown should try starting the game
+const { user } = useAuthStore.getState();
+if (
+  updatedRoom.gameStatus === "countdown" &&
+  updatedRoom.countdownEndAt &&
+  Date.now() >= updatedRoom.countdownEndAt &&
+  updatedRoom.countdownStartedBy === user?.telegramId
+) {
   get().startGameIfCountdownEnded();
-  // ✅ Always fetch cards
+}
+
   get().fetchBingoCards();
 
   // ✅ Count how many players actually placed bets (claimed cards)

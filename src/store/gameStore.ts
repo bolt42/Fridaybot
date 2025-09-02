@@ -120,9 +120,10 @@ drawNumbersLoop: () => {
   }, 4000); // every 4s
 },
 startGameIfCountdownEnded: async () => {
-  const { currentRoom, bingoCards } = get();
+  const { currentRoom } = get();
   if (!currentRoom) return;
 
+  // 🚫 Only trigger when countdown has ended
   if (currentRoom.gameStatus !== "countdown" || !currentRoom.countdownEndAt) return;
   if (Date.now() < currentRoom.countdownEndAt) return;
 
@@ -133,12 +134,12 @@ startGameIfCountdownEnded: async () => {
     await runTransaction(roomRef, (room: any) => {
       if (!room) return room;
 
-      // 🚫 If game already started, abort
+      // 🚫 Already in playing state → abort
       if (room.gameStatus === "playing" && room.gameId) {
         return room;
       }
 
-      // 🚫 If countdown hasn’t ended yet, abort
+      // 🚫 Countdown not finished → abort
       if (room.countdownEndAt && Date.now() < room.countdownEndAt) {
         return room;
       }
@@ -153,29 +154,28 @@ startGameIfCountdownEnded: async () => {
 
       const totalAmount = activeCards.length * room.betAmount * 0.9;
 
+      // ✅ Update room state
       room.gameStatus = "playing";
       room.gameId = gameId;
       room.countdownEndAt = null;
       room.countdownStartedBy = null;
 
-      // Create game entry
-     // ✅ Use Firebase set
-fbset(ref(rtdb, `games/${gameId}`), {
-  id: gameId,
-  roomId: room.id,
-  bingoCards: activeCards,
-  winners: [],
-  drawnNumbers: [],
-  createdAt: Date.now(),
-  status: "playing",
-  amount: totalAmount,
-});
-
+      // ✅ Create game entry in /games
+      fbset(ref(rtdb, `games/${gameId}`), {
+        id: gameId,
+        roomId: room.id,
+        bingoCards: activeCards,
+        winners: [],
+        drawnNumbers: [],
+        createdAt: Date.now(),
+        status: "playing",
+        amount: totalAmount,
+      });
 
       return room;
     });
 
-    // ✅ Start number drawing only once
+    // ✅ Start number drawing loop once
     get().drawNumbersLoop();
   } catch (err) {
     console.error("❌ Error starting game:", err);

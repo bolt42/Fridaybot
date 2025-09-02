@@ -205,7 +205,7 @@ return (
               return (
                 <div
                   key={`${col}-${num}`}
-                  className={`flex items-center justify-center mb-[0.5px] rounded font-bold text-[11px] transition 
+                  className={`flex items-center justify-center p-[5px] rounded font-bold text-[11px] transition 
                     ${isCalled ? "bg-green-500 text-white scale-105" : "bg-white/20"}
                   `}
                 >

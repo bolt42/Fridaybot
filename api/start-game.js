@@ -1,5 +1,5 @@
 // ✅ Use ESM imports, not require
-import { rtdb } from "../../bot/firebaseConfig.js";  // adjust path if needed
+import { rtdb } from "../bot/firebaseConfig.js";  // adjust path if needed
 import { ref, push, set as fbset, runTransaction } from "firebase/database";
 
 // ✅ Always default export the handler

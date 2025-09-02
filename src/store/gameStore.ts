@@ -128,26 +128,42 @@ startGameIfCountdownEnded: async () => {
 
   const roomRef = ref(rtdb, `rooms/${currentRoom.id}`);
   const gamesRef = ref(rtdb, "games");
-  if (currentRoom.gameId) {
-  console.log("⚠️ Game already exists:", currentRoom.gameId);
-  return;
-}
-  // ✅ Check if a game is already active for this room
-  if (currentRoom.gameId && currentRoom.gameStatus === "playing") {
-    console.log("⚠️ A game is already active for this room:", currentRoom.gameId);
+
+  // ✅ Transaction: claim game slot
+  const txResult = await runTransaction(roomRef, (room: any) => {
+    if (!room) return room;
+
+    // if already playing or has a game, abort
+    if (room.gameId || room.gameStatus === "playing") {
+      return room;
+    }
+
+    // mark as playing & reserve a gameId
+    const newGameRef = push(gamesRef);
+    const gameId = newGameRef.key;
+    room.gameId = gameId;
+    room.gameStatus = "playing";
+    room.countdownStartedBy = null;
+    room.countdownEndAt = null;
+
+    // attach temporary gameId so only one client creates game
+    room.__pendingGameId = gameId;
+    return room;
+  });
+
+  if (!txResult.committed || !txResult.snapshot.exists()) {
+    console.log("⚠️ Another client already started the game.");
     return;
   }
 
-  // ✅ collect claimed cards
-  const activeCards = bingoCards.filter(c => c.claimed);
+  const room = txResult.snapshot.val();
+  const gameId = room.__pendingGameId;
 
-  // ✅ total payout
+  // ✅ collect claimed cards
+  const activeCards = bingoCards.filter((c) => c.claimed);
   const totalAmount = activeCards.length * currentRoom.betAmount * 0.9;
 
-  // ✅ create new game
-  const newGameRef = push(gamesRef);
-  const gameId = newGameRef.key;
-
+  // ✅ create game data
   const gameData = {
     id: gameId,
     roomId: currentRoom.id,
@@ -159,13 +175,10 @@ startGameIfCountdownEnded: async () => {
     amount: totalAmount,
   };
 
-  // ✅ atomically update room + new game
+  // ✅ commit game object
   await update(ref(rtdb), {
-    [`rooms/${currentRoom.id}/gameStatus`]: "playing",
-    [`rooms/${currentRoom.id}/gameId`]: gameId,
-    [`rooms/${currentRoom.id}/countdownStartedBy`]: null,
-    [`rooms/${currentRoom.id}/countdownEndAt`]: null,
     [`games/${gameId}`]: gameData,
+    [`rooms/${currentRoom.id}/__pendingGameId`]: null, // cleanup temp
   });
 
   // ✅ start number drawing process
@@ -173,6 +186,7 @@ startGameIfCountdownEnded: async () => {
 
   console.log("✅ Game started:", gameData);
 },
+
 
 
   fetchRooms: () => {

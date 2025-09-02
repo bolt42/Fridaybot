@@ -107,17 +107,22 @@ drawNumbersLoop: () => {
     }
   }, 4000); // every 4s
 },
-// inside useGameStore
 startGameIfCountdownEnded: async () => {
   const { currentRoom, bingoCards } = get();
   if (!currentRoom) return;
 
-  // Countdown not yet over
+  // Only proceed if countdown is over
   if (currentRoom.gameStatus !== "countdown" || !currentRoom.countdownEndAt) return;
   if (Date.now() < currentRoom.countdownEndAt) return;
 
   const roomRef = ref(rtdb, `rooms/${currentRoom.id}`);
-  const gamesRef = ref(rtdb, `games`);
+  const gamesRef = ref(rtdb, "games");
+
+  // ✅ Check if a game is already active for this room
+  if (currentRoom.gameId && currentRoom.gameStatus === "playing") {
+    console.log("⚠️ A game is already active for this room:", currentRoom.gameId);
+    return;
+  }
 
   // ✅ collect claimed cards
   const activeCards = bingoCards.filter(c => c.claimed);
@@ -140,20 +145,21 @@ startGameIfCountdownEnded: async () => {
     amount: totalAmount,
   };
 
-  // write both room + game atomically
-await update(ref(rtdb), {
-  [`rooms/${currentRoom.id}/gameStatus`]: "playing",
-  [`rooms/${currentRoom.id}/gameId`]: gameId,
-  [`rooms/${currentRoom.id}/countdownStartedBy`]: null,
-  [`rooms/${currentRoom.id}/countdownEndAt`]: null,
-  [`games/${gameId}`]: gameData,
-});
+  // ✅ atomically update room + new game
+  await update(ref(rtdb), {
+    [`rooms/${currentRoom.id}/gameStatus`]: "playing",
+    [`rooms/${currentRoom.id}/gameId`]: gameId,
+    [`rooms/${currentRoom.id}/countdownStartedBy`]: null,
+    [`rooms/${currentRoom.id}/countdownEndAt`]: null,
+    [`games/${gameId}`]: gameData,
+  });
 
-// ✅ start number drawing process
-get().drawNumbersLoop();
+  // ✅ start number drawing process
+  get().drawNumbersLoop();
 
   console.log("✅ Game started:", gameData);
 },
+
 
   fetchRooms: () => {
     const roomsRef = ref(rtdb, 'rooms');

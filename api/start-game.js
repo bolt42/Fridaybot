@@ -38,7 +38,7 @@ export default async function handler(req, res) {
 
       // update room status
       room.gameStatus = "playing";
-      room.activeGameId = gameId;
+      room.gameId = gameId;
 
       return room;
     });

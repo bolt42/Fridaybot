@@ -20,7 +20,7 @@ export default async function handler(req, res) {
 
     // ✅ Check if there’s already an active game for this room
     const existingGamesSnap = await get(ref(rtdb, `games`));
-    let existingGameId: string | null = null;
+    let existingGameId = null;
 
     if (existingGamesSnap.exists()) {
       existingGamesSnap.forEach((child) => {
@@ -38,10 +38,10 @@ export default async function handler(req, res) {
 
     const roomRef = ref(rtdb, `rooms/${roomId}`);
     const gameId = uuidv4();
-    let activeCards: Record<string, any> = {};
+    let activeCards = {};
 
     // ✅ Reserve gameId safely in room
-    const result = await runTransaction(roomRef, (room: any) => {
+    const result = await runTransaction(roomRef, (room) => {
       if (!room) return room;
 
       if (room.gameStatus !== "countdown" || room.gameId) {
@@ -105,7 +105,7 @@ export default async function handler(req, res) {
     startNumberDraw(roomId, gameId, drawOrder);
 
     return res.status(200).json({ success: true, gameId });
-  } catch (err: any) {
+  } catch (err) {
     console.error("❌ Error starting game:", err);
     return res.status(500).json({ error: err.message });
   }
@@ -114,7 +114,7 @@ export default async function handler(req, res) {
 // -------------------
 // Number drawing
 // -------------------
-function generateBingoDraw(): number[] {
+function generateBingoDraw() {
   const ranges = [
     [1, 15],
     [16, 30],
@@ -122,7 +122,7 @@ function generateBingoDraw(): number[] {
     [46, 60],
     [61, 75],
   ];
-  let numbers: number[] = [];
+  let numbers = [];
 
   ranges.forEach(([min, max]) => {
     const bucket = Array.from({ length: max - min + 1 }, (_, i) => min + i);
@@ -135,7 +135,7 @@ function generateBingoDraw(): number[] {
   return numbers;
 }
 
-function startNumberDraw(roomId: string, gameId: string, drawOrder: number[]) {
+function startNumberDraw(roomId, gameId, drawOrder) {
   if (activeDrawingLoops.has(gameId)) {
     console.log(`⚠️ Drawing loop already active for game ${gameId}`);
     return;
@@ -197,7 +197,7 @@ function startNumberDraw(roomId: string, gameId: string, drawOrder: number[]) {
 // -------------------
 // Stop Game Function
 // -------------------
-async function stopGame(roomId: string, res: any) {
+async function stopGame(roomId, res) {
   try {
     const roomRef = ref(rtdb, `rooms/${roomId}`);
     const roomSnapshot = await get(roomRef);
@@ -226,7 +226,7 @@ async function stopGame(roomId: string, res: any) {
     activeDrawingLoops.delete(gameId);
 
     return res.status(200).json({ success: true, message: `Game ${gameId} stopped` });
-  } catch (err: any) {
+  } catch (err) {
     console.error("❌ Error stopping game:", err);
     return res.status(500).json({ error: err.message });
   }

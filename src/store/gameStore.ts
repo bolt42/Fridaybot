@@ -48,7 +48,38 @@ export const useGameStore = create<GameState>((set, get) => ({
   bingoCards: [],
   loading: false,
  // add this
+drawNumbersLoop: () => {
+  const { currentRoom } = get();
+  if (!currentRoom || currentRoom.gameStatus !== "playing") return;
 
+  const gameRef = ref(rtdb, `games/${currentRoom.gameId}`);
+  const roomRef = ref(rtdb, `rooms/${currentRoom.id}`);
+
+  let availableNumbers = Array.from({ length: 75 }, (_, i) => i + 1);
+  let drawn: number[] = [];
+
+  let count = 0;
+  const interval = setInterval(async () => {
+    if (count >= 25 || availableNumbers.length === 0) {
+      clearInterval(interval);
+      // game ends automatically after 25 draws
+      await update(roomRef, { gameStatus: "ended" });
+      return;
+    }
+
+    // pick a random number
+    const idx = Math.floor(Math.random() * availableNumbers.length);
+    const num = availableNumbers[idx];
+    availableNumbers.splice(idx, 1);
+    drawn.push(num);
+
+    // push to firebase
+    await update(gameRef, { drawnNumbers: drawn });
+    await update(roomRef, { calledNumbers: drawn });
+
+    count++;
+  }, 4000); // every 4s
+},
 // inside useGameStore
 startGameIfCountdownEnded: async () => {
   const { currentRoom, bingoCards } = get();
@@ -84,10 +115,13 @@ startGameIfCountdownEnded: async () => {
 
   // write both room + game atomically
   await update(ref(rtdb), {
-    [`rooms/${currentRoom.id}/gameStatus`]: "playing",
-    [`rooms/${currentRoom.id}/gameId`]: gameId,
-    [`games/${gameId}`]: gameData,
-  });
+  [`rooms/${currentRoom.id}/gameStatus`]: "playing",
+  [`rooms/${currentRoom.id}/gameId`]: gameId,
+  [`games/${gameId}`]: gameData,
+});
+
+// ✅ start number drawing process
+get().drawNumbersLoop();
 
   console.log("✅ Game started:", gameData);
 },
@@ -175,7 +209,8 @@ if (
       set({ selectedCard: card });
     }
   },
-  
+
+
 placeBet: async () => {
   const { currentRoom, selectedCard } = get();
   const { user } = useAuthStore.getState();

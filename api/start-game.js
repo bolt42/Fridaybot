@@ -1,56 +1,46 @@
-// /pages/api/start-game.js (or .ts if using TS)
-import { rtdb } from "../src/firebase/config";
-import { ref, runTransaction, push, update } from "firebase/database";
+// ✅ Use ESM imports, not require
+import { rtdb } from "../../bot/firebaseConfig.js";  // adjust path if needed
+import { ref, push, set as fbset, runTransaction } from "firebase/database";
 
+// ✅ Always default export the handler
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    res.status(405).json({ error: "Method not allowed" });
-    return;
+    return res.status(405).json({ error: "Method Not Allowed" });
   }
 
   try {
-    const {roomId } = req.body;
+    const { roomId } = req.body;
     if (!roomId) {
-      res.status(400).json({ error: "Missing roomId" });
-      return;
+      return res.status(400).json({ error: "Missing roomId" });
     }
 
     const roomRef = ref(rtdb, `rooms/${roomId}`);
     const gamesRef = ref(rtdb, "games");
 
-    let createdGameId = null;
-
     await runTransaction(roomRef, (room) => {
       if (!room) return room;
 
-      // Already started → skip
-      if (room.gameStatus === "playing" && room.gameId) {
-        return room;
-      }
+      if (room.gameStatus === "playing" && room.gameId) return room;
 
-      // Countdown not finished → skip
-      if (room.countdownEndAt && Date.now() < room.countdownEndAt) {
-        return room;
-      }
+      if (room.countdownEndAt && Date.now() < room.countdownEndAt) return room;
 
-      // ✅ Create new game
       const newGameRef = push(gamesRef);
-      createdGameId = newGameRef.key;
+      const gameId = newGameRef.key;
 
       const activeCards = Object.values(room.bingoCards || {}).filter(
         (c) => c.claimed
       );
+
       const totalAmount = activeCards.length * room.betAmount * 0.9;
 
       room.gameStatus = "playing";
-      room.gameId = createdGameId;
+      room.gameId = gameId;
       room.countdownEndAt = null;
       room.countdownStartedBy = null;
 
-      // Add game data
-      update(ref(rtdb, `games/${createdGameId}`), {
-        id: createdGameId,
-        roomId,
+      fbset(ref(rtdb, `games/${gameId}`), {
+        id: gameId,
+        roomId: room.id,
         bingoCards: activeCards,
         winners: [],
         drawnNumbers: [],
@@ -62,9 +52,9 @@ export default async function handler(req, res) {
       return room;
     });
 
-    res.status(200).json({ success: true, gameId: createdGameId });
+    return res.status(200).json({ success: true });
   } catch (err) {
-    console.error("❌ start-game error:", err);
-    res.status(500).json({ error: err.message || "Server error" });
+    console.error("❌ Error in start-game API:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 }

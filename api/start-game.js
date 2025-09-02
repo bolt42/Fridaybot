@@ -1,10 +1,10 @@
 import { rtdb } from "../bot/firebaseConfig.js";
-import { ref, get, set as fbset, runTransaction } from "firebase/database";
+import { ref, get, set as fbset, runTransaction, update } from "firebase/database";
 import { v4 as uuidv4 } from "uuid";
 
 export default async function handler(req, res) {
   try {
-    const { roomId } = req.body; // ✅ client must send roomId
+    const { roomId } = req.body; // ✅ must be sent in body
     if (!roomId) {
       return res.status(400).json({ error: "Missing roomId" });
     }
@@ -16,7 +16,6 @@ export default async function handler(req, res) {
       if (!room) return room;
       if (room.gameStatus !== "countdown") return room;
 
-      // collect cards that are claimed
       const activeCards = {};
       for (const [cardId, card] of Object.entries(room.bingoCards || {})) {
         if (card.claimed) {
@@ -24,7 +23,6 @@ export default async function handler(req, res) {
         }
       }
 
-      // ✅ store game using the roomId from request
       fbset(ref(rtdb, `games/${gameId}`), {
         id: gameId,
         roomId,
@@ -36,12 +34,14 @@ export default async function handler(req, res) {
         amount: room.totalAmount || 0,
       });
 
-      // update room status
       room.gameStatus = "playing";
       room.gameId = gameId;
 
       return room;
     });
+
+    // ✅ Now start number drawing
+    startNumberDraw(roomId, gameId);
 
     return res.status(200).json({ success: true, gameId });
   } catch (err) {
@@ -49,16 +49,20 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: err.message });
   }
 }
+
+// -------------------
+// Number drawing loop
+// -------------------
 function startNumberDraw(roomId, gameId) {
   const gameRef = ref(rtdb, `games/${gameId}`);
   const roomRef = ref(rtdb, `rooms/${roomId}`);
 
   const ranges = [
-    Array.from({ length: 15 }, (_, i) => i + 1),   // 1–15
-    Array.from({ length: 15 }, (_, i) => i + 16),  // 16–30
-    Array.from({ length: 15 }, (_, i) => i + 31),  // 31–45
-    Array.from({ length: 15 }, (_, i) => i + 46),  // 46–60
-    Array.from({ length: 15 }, (_, i) => i + 61),  // 61–75
+    Array.from({ length: 15 }, (_, i) => i + 1),
+    Array.from({ length: 15 }, (_, i) => i + 16),
+    Array.from({ length: 15 }, (_, i) => i + 31),
+    Array.from({ length: 15 }, (_, i) => i + 46),
+    Array.from({ length: 15 }, (_, i) => i + 61),
   ];
 
   let bucketIndex = 0;
@@ -68,7 +72,6 @@ function startNumberDraw(roomId, gameId) {
     if (bucketIndex >= ranges.length) {
       clearInterval(interval);
 
-      // ✅ mark room/game as ended
       await update(roomRef, {
         gameStatus: "ended",
         activeGameId: null,
@@ -98,7 +101,6 @@ function startNumberDraw(roomId, gameId) {
       lastCalledNumber: num,
     });
 
-    // after 5 numbers, move to next column
     const numbersInBucket = drawn.filter((n) => {
       if (bucketIndex === 0) return n <= 15;
       if (bucketIndex === 1) return n >= 16 && n <= 30;

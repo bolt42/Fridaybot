@@ -340,8 +340,7 @@ return (
           </div>
         )}
       </div>
-    </div>
- {currentRoom?.gameStatus === "countdown" && currentRoom.countdown && (
+       {currentRoom?.gameStatus === "countdown" && currentRoom.countdown && (
   <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
     <div className="bg-white text-black rounded-xl p-6 text-center shadow-xl">
       <h2 className="text-xl font-bold mb-2">Game starting soon</h2>
@@ -349,6 +348,8 @@ return (
     </div>
   </div>
 )}
+    </div>
+
 
 
 

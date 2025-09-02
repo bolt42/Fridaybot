@@ -62,61 +62,50 @@ joinRoom: (roomId: string) => {
   const roomRef = ref(rtdb, 'rooms/' + roomId);
 
   onValue(roomRef, (snapshot) => {
-    if (snapshot.exists()) {
-      const updatedRoom = { id: roomId, ...snapshot.val() } as Room;
-      set({ currentRoom: updatedRoom });
-
-      // ✅ Fetch cards once room is set
-      get().fetchBingoCards();
-
-      // ✅ Start countdown only when enough players & still waiting
-      if (
-        updatedRoom.players &&
-        Object.keys(updatedRoom.players).length >= 2 &&
-        updatedRoom.gameStatus === "waiting"
-      ) {
-        const { user } = useAuthStore.getState();
-        const starterId = user?.telegramId;
-        if (!starterId) return;
-
-        const countdownRef = ref(rtdb, `rooms/${roomId}`);
-
-        // Only start if no one started it already
-        if (!updatedRoom.countdown) {
-          // 👇 wrap async work in an async IIFE
-          (async () => {
-            await update(countdownRef, {
-              gameStatus: "countdown",
-              countdown: 30,
-            });
-
-            let sec = 30;
-            const timer = setInterval(async () => {
-              sec--;
-              await update(countdownRef, { countdown: sec });
-
-              if (sec <= 0) {
-                clearInterval(timer);
-                await update(countdownRef, { gameStatus: "playing" });
-
-                const { players, betAmount } = updatedRoom;
-                for (const pid in players) {
-                  const player = players[pid];
-                  const userBalanceRef = ref(rtdb, `users/${player.id}/balance`);
-                  get(userBalanceRef).then((snap) => {
-                    if (snap.exists()) {
-                      const bal = snap.val() || 0;
-                      fbset(userBalanceRef, bal - betAmount);
-                    }
-                  });
-                }
-              }
-            }, 1000);
-          })();
-        }
-      }
-    } else {
+    if (!snapshot.exists()) {
       set({ currentRoom: null });
+      return;
+    }
+
+    const updatedRoom = { id: roomId, ...snapshot.val() } as Room;
+    set({ currentRoom: updatedRoom });
+
+    // ✅ Always fetch cards
+    get().fetchBingoCards();
+
+    // ✅ Start countdown when exactly 2 players are in, and no countdown yet
+    if (
+      updatedRoom.players &&
+      Object.keys(updatedRoom.players).length === 2 && // 🎯 trigger when 2nd player joins
+      updatedRoom.gameStatus === "waiting" &&
+      !updatedRoom.countdown &&
+      !updatedRoom.countdownStartedBy
+    ) {
+      const { user } = useAuthStore.getState();
+      if (!user?.telegramId) return;
+
+      const countdownRef = ref(rtdb, `rooms/${roomId}`);
+
+      // mark who started countdown (so others don't duplicate)
+      (async () => {
+        await update(countdownRef, {
+          gameStatus: "countdown",
+          countdown: 30,
+          countdownStartedBy: user.telegramId,
+        });
+
+        let sec = 30;
+        const timer = setInterval(async () => {
+          sec--;
+
+          await update(countdownRef, { countdown: sec });
+
+          if (sec <= 0) {
+            clearInterval(timer);
+            await update(countdownRef, { gameStatus: "playing" });
+          }
+        }, 1000);
+      })();
     }
   });
 },

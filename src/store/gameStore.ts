@@ -289,7 +289,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       const gameId = newGameRef.key as string;
 
       const seed = (hashCode(currentRoom.id) ^ (currentRoom.countdownEndAt || 0)) >>> 0;
-      const numbers = seededShuffle(range(75), seed);
+      const allNumbers = seededShuffle(range(75), seed);
+      const numbers = allNumbers.slice(0, 25); // only first 25 drawn numbers
       const payload: GamePayload = { drawnNumbers: numbers, startedAt: Date.now(), drawIntervalMs: 3000 };
 
       await fbSet(ref(rtdb, `games/${gameId}`), payload);

@@ -126,7 +126,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     console.log("✅ Game ended. Next round countdown started.");
 
     // Step 2: After 3 min, reset the room + unclaim all cards
-    ssetTimeout(async () => {
+    setTimeout(async () => {
  
 
   // ✅ Reset the room to waiting

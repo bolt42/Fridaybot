@@ -45,10 +45,10 @@ const CountdownOverlay = ({
             : "w-3/5 h-3/5 rounded-xl p-2"}    // 🔹 30s countdown always fits
         `}
       >
-        <h2 className={`font-bold mb-2 ${isNextRound ? "text-lg" : "text-2xl"}`}>
+        <h2 className={`font-bold mb-2 ${isNextRound ? "text-1" : "text-l"}`}>
           {label}
         </h2>
-        <p className={`${isNextRound ? "text-2xl" : "text-5xl"} font-mono`}>
+        <p className={`${isNextRound ? "text-2xl" : "text-3xl"} font-mono`}>
           {formattedTime}
         </p>
       </div>

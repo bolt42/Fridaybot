@@ -134,7 +134,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (cardsSnap.exists()) {
         const updates: any = {};
         Object.entries(cardsSnap.val()).forEach(([cardId, card]: [string, any]) => {
-          updates[cardId] = { ...card, claimed: false, claimedBy: null };
+          updates[cardId] = { ...card, claimed: false };
         });
         await update(cardsRef, updates);
         console.log("♻️ All cards reset.");

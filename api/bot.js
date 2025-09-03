@@ -118,7 +118,7 @@ async function registerUserToFirebase(user) {
     const newUser = {
       telegramId: user.id.toString(),
       username: user.username || `user_${user.id}`,
-      balance: 50,             // initial balance
+      balance: 50,             // initial balance 
       gamesPlayed: 0,          // start at 0
       gamesWon: 0,             // start at 0
       totalWinnings: 0,        // start at 0

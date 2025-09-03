@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { rtdb } from '../firebase/config';
-import { ref, onValue, get, set as fbset , update , remove, push, runTransaction} from 'firebase/database';
+import { ref, onValue, get, set as fbset, update, remove, push, runTransaction } from 'firebase/database';
 import { useAuthStore } from '../store/authStore';
 interface BingoCard {
   id: string;
@@ -128,32 +128,34 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     // Step 2: After cooldown, reset room + unclaim all cards
     setTimeout(async () => {
-      try {
-        // ✅ Reset all cards in the room
-        const snap = await get(bingoCardsRef);
-if (snap.exists()) {
-  const updates: any = {};
-  snap.forEach((cardSnap) => {
-    updates[`${cardSnap.key}/claimed`] = false;
-    updates[`${cardSnap.key}/claimedBy`] = null;
-  });
-  await update(bingoCardsRef, updates);
-  console.log("♻️ All cards reset to unclaimed.");
-}
+  try {
+    const snap = await get(bingoCardsRef);
+    if (snap.exists()) {
+      const cards = snap.val(); // plain object
+      const updates: any = {};
 
+      Object.keys(cards).forEach((cardId) => {
+        updates[`${cardId}/claimed`] = false;
+        updates[`${cardId}/claimedBy`] = null;
+      });
 
-        // ✅ Reset the room back to waiting
-        await update(roomRef, {
-          gameStatus: "waiting",
-          nextGameCountdownEndAt: null,
-          players: {}, // optional: clear players too
-        });
+      await update(bingoCardsRef, updates);
+      console.log("♻️ All cards reset to unclaimed.");
+    }
 
-        console.log("✅ Room reset to waiting after cooldown.");
-      } catch (err) {
-        console.error("❌ Failed to reset cards/room:", err);
-      }
-    }, cooldownDuration);
+    // ✅ Reset the room back to waiting
+    await update(roomRef, {
+      gameStatus: "waiting",
+      nextGameCountdownEndAt: null,
+      players: {}, // optional
+    });
+
+    console.log("✅ Room reset to waiting after cooldown.");
+  } catch (err) {
+    console.error("❌ Failed to reset cards/room:", err);
+  }
+}, cooldownDuration);
+
   } catch (err) {
     console.error("❌ Failed to end game:", err);
   }

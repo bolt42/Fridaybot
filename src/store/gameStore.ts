@@ -54,31 +54,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   startingGame: false, // ✅ Initialize startingGame flag
  // add this
 
-startGameIfCountdownEnded: async () => {
-  const { currentRoom } = get();
-  if (!currentRoom) return;
 
-  try {
-    const res = await fetch("/api/start-game", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ roomId: currentRoom.id }),
-    });
-
-    if (!res.ok) {
-      const error = await res.json().catch(() => ({}));
-      throw new Error(error.error || "Failed to start game");
-    }
-
-    // ✅ Only call .json() once
-    const data = await res.json();
-    console.log("✅ Game started:", data);
-
-    return data;
-  } catch (err) {
-    console.error("❌ Error calling start-game API:", err);
-  }
-},
   fetchRooms: () => {
     const roomsRef = ref(rtdb, 'rooms');
     onValue(roomsRef, (snapshot) => {
@@ -102,7 +78,6 @@ joinRoom: (roomId: string) => {
 
   const updatedRoom = { id: roomId, ...snapshot.val() } as Room;
   set({ currentRoom: updatedRoom });
-  get().startGameIfCountdownEnded();
   // ✅ Always fetch cards
   get().fetchBingoCards();
 

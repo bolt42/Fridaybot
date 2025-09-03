@@ -187,20 +187,22 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
 
       // reset ended room to waiting if cooldown expired
-      if (
-        updatedRoom.gameStatus === 'ended' &&
-        (updatedRoom.nextGameCountdownEndAt || 0) <= Date.now() &&
-        (updatedRoom.nextGameCountdownEndAt || 0) > 0
-      ) {
-        runTransaction(ref(rtdb, `rooms/${roomId}`), (room: any) => {
-          if (!room) return;
-          if (room.gameStatus === 'ended') {
-            room.gameStatus = 'waiting';
-            room.nextGameCountdownEndAt = null;
-          }
-          return room;
-        });
-      }
+     // inside joinRoom after you build updatedRoom:
+if (
+  updatedRoom.gameStatus === 'ended' &&
+  updatedRoom.nextGameCountdownEndAt &&
+  Date.now() >= updatedRoom.nextGameCountdownEndAt
+) {
+  runTransaction(ref(rtdb, `rooms/${roomId}`), (room: any) => {
+    if (!room) return;
+    if (room.gameStatus === 'ended') {
+      room.gameStatus = 'waiting';
+      room.nextGameCountdownEndAt = null;
+    }
+    return room;
+  });
+}
+
     });
   },
 
@@ -385,7 +387,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         room.payout = (room.betAmount || 0) * (Object.keys(room.players || {}).length || 1);
         room.gameStatus = 'ended';
         room.gameId = null;
-        room.nextGameCountdownEndAt = Date.now() + 60 * 1000;
+        room.nextGameCountdownEndAt = Date.now() + 30 * 1000;
         return room;
       });
 

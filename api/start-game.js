@@ -77,16 +77,46 @@ export default async function handler(req, res) {
 const playerIds = Object.keys(room.players || {});
 let drawnNumbers = [];
 if (playerIds.length > 0) {
-   const randomPlayerId = playerIds[Math.floor(Math.random() * playerIds.length)];
+  const randomPlayerId = playerIds[Math.floor(Math.random() * playerIds.length)];
   const player = room.players[randomPlayerId];
   const cardId = player.cardId;
 
   // Lookup the card from room.bingoCards
-  const card = room.bingoCards?.[cardId]; // assuming each player has a card object
-  drawnNumbers = pickWinningNumbers(card);
+  const card = room.bingoCards?.[cardId];
+
+  if (card && card.numbers) {
+    // Pick a winning pattern for the selected card
+    let winningNumbers = pickWinningNumbers(card);
+
+    // Now modify slightly so other cards "almost" win
+    const allOtherCards = Object.values(room.bingoCards || {}).filter(c => c.id !== cardId);
+    const almostNumbers = new Set(winningNumbers);
+
+    allOtherCards.forEach(otherCard => {
+      if (!otherCard?.numbers) return;
+
+      // Pick 1 or 2 numbers from their potential bingo row/col/diagonal to avoid full match
+      const flatNumbers = otherCard.numbers.flat();
+      const randomMissCount = Math.min(2, flatNumbers.length);
+      let missNumbers = [];
+
+      while (missNumbers.length < randomMissCount) {
+        const n = flatNumbers[Math.floor(Math.random() * flatNumbers.length)];
+        if (!missNumbers.includes(n)) missNumbers.push(n);
+      }
+
+      // Remove 1–2 numbers from the final drawn set to make other cards miss
+      missNumbers.forEach(n => almostNumbers.delete(n));
+    });
+
+    drawnNumbers = Array.from(almostNumbers);
+  } else {
+    drawnNumbers = generateNumbers(); // fallback
+  }
 } else {
   drawnNumbers = generateNumbers(); // fallback
 }
+
 
       const drawIntervalMs = 2000;
 

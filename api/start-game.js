@@ -46,7 +46,6 @@ export default async function handler(req, res) {
         id: gameId,
         roomId,
         drawnNumbers,
-        payout: pay,
         createdAt: Date.now(),
         status: "active",
       };

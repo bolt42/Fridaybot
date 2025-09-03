@@ -130,16 +130,17 @@ export const useGameStore = create<GameState>((set, get) => ({
     setTimeout(async () => {
       try {
         // ✅ Reset all cards in the room
-        const snapshot = await get(bingoCardsRef);
-        if (snapshot.exists()) {
-          const updates: any = {};
-          snapshot.forEach((cardSnap) => {
-            updates[`${cardSnap.key}/claimed`] = false;
-            updates[`${cardSnap.key}/claimedBy`] = null;
-          });
-          await update(bingoCardsRef, updates);
-          console.log("♻️ All cards reset to unclaimed.");
-        }
+        const snap = await get(bingoCardsRef);
+if (snap.exists()) {
+  const updates: any = {};
+  snap.forEach((cardSnap) => {
+    updates[`${cardSnap.key}/claimed`] = false;
+    updates[`${cardSnap.key}/claimedBy`] = null;
+  });
+  await update(bingoCardsRef, updates);
+  console.log("♻️ All cards reset to unclaimed.");
+}
+
 
         // ✅ Reset the room back to waiting
         await update(roomRef, {

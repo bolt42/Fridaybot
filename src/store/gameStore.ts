@@ -129,25 +129,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     // Step 2: After cooldown, reset room + unclaim all cards
     setTimeout(async () => {
   try {
-    const snap = await get(bingoCardsRef);
-    if (snap.exists()) {
-      const cards = snap.val(); // plain object
-      const updates: any = {};
-
-      Object.keys(cards).forEach((cardId) => {
-        updates[`${cardId}/claimed`] = false;
-        updates[`${cardId}/claimedBy`] = null;
-      });
-
-      await update(bingoCardsRef, updates);
-      console.log("♻️ All cards reset to unclaimed.");
-    }
-
     // ✅ Reset the room back to waiting
     await update(roomRef, {
       gameStatus: "waiting",
-      nextGameCountdownEndAt: null,
-      players: {}, // optional
+      nextGameCountdownEndAt: null, // optional
     });
 
     console.log("✅ Room reset to waiting after cooldown.");

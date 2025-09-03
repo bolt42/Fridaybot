@@ -43,7 +43,7 @@ interface GameState {
   selectCard: (cardId: string) => void;
   placeBet: () => Promise<boolean>;
   checkBingo: () => Promise<boolean>;
-   displayedCalledNumbers: number[];
+  displayedCalledNumbers: { [roomId: string]: number[] };
   startNumberStream: (roomId: string, gameId: string) => void;
 }
 
@@ -82,26 +82,26 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({ startingGame: false });
   }
 },
-    startNumberStream: (roomId, gameId) => {
+   startNumberStream: (roomId, gameId) => {
   const gameRef = ref(rtdb, `games/${gameId}`);
+  
   onValue(gameRef, (snapshot) => {
     const data = snapshot.val();
     if (!data || !data.drawnNumbers || !data.startedAt) return;
 
     const { drawnNumbers, startedAt, drawIntervalMs } = data;
-
     const elapsed = Date.now() - startedAt;
     let currentIndex = Math.floor(elapsed / drawIntervalMs);
 
-    // Clamp so we don’t overshoot
-    if (currentIndex > drawnNumbers.length) {
-      currentIndex = drawnNumbers.length;
-    }
+    if (currentIndex > drawnNumbers.length) currentIndex = drawnNumbers.length;
 
-    // ✅ Show all numbers that should already be revealed
-    set({ displayedCalledNumbers: drawnNumbers.slice(0, currentIndex) });
+    set((state) => ({
+      displayedCalledNumbers: {
+        ...state.displayedCalledNumbers,
+        [roomId]: drawnNumbers.slice(0, currentIndex),
+      },
+    }));
 
-    // ✅ Continue drawing from currentIndex forward
     let i = currentIndex;
     const interval = setInterval(() => {
       if (i >= drawnNumbers.length) {
@@ -111,12 +111,16 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
 
       set((state) => ({
-        displayedCalledNumbers: [...state.displayedCalledNumbers, drawnNumbers[i]],
+        displayedCalledNumbers: {
+          ...state.displayedCalledNumbers,
+          [roomId]: [...(state.displayedCalledNumbers[roomId] || []), drawnNumbers[i]],
+        },
       }));
       i++;
     }, drawIntervalMs);
   });
 },
+
   endGame: async (roomId: string) => {
   try {
     const roomRef = ref(rtdb, `rooms/${roomId}`);

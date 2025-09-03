@@ -80,7 +80,10 @@ const [remaining, setRemaining] = useState<number | null>(null);
   
 
   const cancelBet = useGameStore((state) => state.cancelBet);
-  const displayedCalledNumbers = useGameStore((s) => s.displayedCalledNumbers);
+const displayedCalledNumbers = useGameStore(
+  (s) => s.displayedCalledNumbers[currentRoom?.id ?? ""] || []
+);
+
 const startNumberStream = useGameStore((s) => s.startNumberStream);
 
 React.useEffect(() => {

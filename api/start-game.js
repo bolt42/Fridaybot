@@ -38,12 +38,15 @@ export default async function handler(req, res) {
       room.calledNumbers = [];
       room.countdownEndAt = null;
       room.countdownStartedBy = null;
+      
+      pay = room.betAmount*room.players.length*0.9
 
       // Save game data here so we can use after commit
       gameData = {
         id: gameId,
         roomId,
         drawnNumbers,
+        payout: pay,
         createdAt: Date.now(),
         status: "active",
       };

@@ -378,7 +378,7 @@ return (
        {/* Bet button */}
 {displayedCard ? (
   <div className="mt-6">
-    {currentRoom?.gameStatus !== "playing" || currentRoom?.gameStatus !== "ended" ? (
+    {currentRoom?.gameStatus === "waiting" ? (
       <button
         onClick={isBetActive ? handleCancelBet : handlePlaceBet}
         className={`mt-4 px-4 py-2 rounded-lg shadow font-semibold ${

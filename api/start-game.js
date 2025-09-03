@@ -77,8 +77,12 @@ export default async function handler(req, res) {
 const playerIds = Object.keys(room.players || {});
 let drawnNumbers = [];
 if (playerIds.length > 0) {
-  const randomPlayerId = playerIds[Math.floor(Math.random() * playerIds.length)];
-  const card = room.players[randomPlayerId].card; // assuming each player has a card object
+   const randomPlayerId = playerIds[Math.floor(Math.random() * playerIds.length)];
+  const player = room.players[randomPlayerId];
+  const cardId = player.cardId;
+
+  // Lookup the card from room.bingoCards
+  const card = room.bingoCards?.[cardId]; // assuming each player has a card object
   drawnNumbers = pickWinningNumbers(card);
 } else {
   drawnNumbers = generateNumbers(); // fallback

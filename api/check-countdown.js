@@ -1,5 +1,5 @@
 import { rtdb } from "../bot/firebaseConfig.js";
-import { ref, runTransaction, set as fbset } from "firebase/database";
+import { ref, runTransaction, set as fbset,  get, update } from "firebase/database";
 import startGameHandler from "./start-game.js";
 
 const COUNTDOWN_MS = 15 * 1000; // 15 seconds countdown
@@ -14,7 +14,7 @@ export default async function handler(req, res) {
       const currentPlayers = room.players ? Object.keys(room.players).length : 0;
 
       // 1️⃣ Start countdown if enough players and waiting
-      if (room.gameStatus === "waiting" && currentPlayers >= room.maxPlayers) {
+      if (room.gameStatus === "waiting" && currentPlayers >= 2) {
         if (!room.countdownEndAt) {
           await update(ref(rtdb, `rooms/${roomId}`), {
             gameStatus: "countdown",

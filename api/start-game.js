@@ -39,7 +39,10 @@ export default async function handler(req, res) {
       room.countdownEndAt = null;
       room.countdownStartedBy = null;
       
-      pay = room.betAmount*room.players.length*0.9
+      const betAmount = room.betAmount || 0;
+      const playerCount = room.currentPlayers || 0;
+      const totalPayout = Math.floor(betAmount * playerCount * 0.9);
+
 
       // Save game data here so we can use after commit
       gameData = {
@@ -48,6 +51,7 @@ export default async function handler(req, res) {
         drawnNumbers,
         createdAt: Date.now(),
         status: "active",
+        totalPayout,
       };
 
       // Return updated room

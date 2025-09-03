@@ -93,7 +93,7 @@ if (playerIds.length > 0) {
     const almostNumbers = new Set(winningNumbers);
 
     allOtherCards.forEach(otherCard => {
-      if (!otherCard?.numbers) return;
+      if (!otherCard?.numbers) return; 
 
       // Pick 1 or 2 numbers from their potential bingo row/col/diagonal to avoid full match
       const flatNumbers = otherCard.numbers.flat();

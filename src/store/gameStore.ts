@@ -94,6 +94,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       const interval = setInterval(() => {
         if (i >= numbers.length) {
           clearInterval(interval);
+           get().endGame(roomId);
           return;
         }
 
@@ -101,9 +102,27 @@ export const useGameStore = create<GameState>((set, get) => ({
           displayedCalledNumbers: [...state.displayedCalledNumbers, numbers[i]],
         }));
         i++;
-      }, 1000); // 1 second gap
+      }, 3000); // 1 second gap
     });
   },
+  endGame: async (roomId: string) => {
+  try {
+    const roomRef = ref(rtdb, `rooms/${roomId}`);
+
+
+    await update(roomRef, {
+      gameStatus: "ended",
+      gameId: null,
+      calledNumbers: [],
+      countdownEndAt: null,
+      countdownStartedBy: null,
+    });
+
+    console.log("✅ Game ended. Next round countdown started.");
+  } catch (err) {
+    console.error("❌ Failed to end game:", err);
+  }
+},
 
 
   fetchRooms: () => {

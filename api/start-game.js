@@ -1,10 +1,9 @@
-// api/startGame.ts (Vercel serverless function)
-import { rtdb } from "../../firebase/config";
-import { ref, runTransaction, update, set as fbset } from "firebase/database";
+import { rtdb } from "../bot/firebaseConfig.js";
+import { ref, runTransaction, set as fbset } from "firebase/database";
 import { v4 as uuidv4 } from "uuid";
 
-function generateNumbers(count = 25): number[] {
-  const numbers: number[] = [];
+function generateNumbers(count = 25) {
+  const numbers = [];
   while (numbers.length < count) {
     const num = Math.floor(Math.random() * 75) + 1; // 1–75
     if (!numbers.includes(num)) numbers.push(num);
@@ -14,7 +13,9 @@ function generateNumbers(count = 25): number[] {
 
 export default async function handler(req, res) {
   const { roomId } = req.body;
-  if (!roomId) return res.status(400).json({ error: "Missing roomId" });
+  if (!roomId) {
+    return res.status(400).json({ error: "Missing roomId" });
+  }
 
   const roomRef = ref(rtdb, `rooms/${roomId}`);
 
@@ -23,7 +24,7 @@ export default async function handler(req, res) {
     const drawnNumbers = generateNumbers();
 
     // Ensure only one game gets created
-    await runTransaction(roomRef, (room: any) => {
+    await runTransaction(roomRef, (room) => {
       if (!room) return room;
 
       if (room.gameStatus !== "countdown" || !room.countdownEndAt) {

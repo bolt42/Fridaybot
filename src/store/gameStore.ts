@@ -210,8 +210,6 @@ if (
 if (updatedRoom.gameStatus === "ended" && updatedRoom.nextGameCountdownEndAt <= Date.now()) {
   update(ref(rtdb, `rooms/${roomId}`), {
     gameStatus: "waiting",
-    countdownEndAt: null,
-    countdownStartedBy:null,
     nextGameCountdownEndAt: null,
   });
 }

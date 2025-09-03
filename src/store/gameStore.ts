@@ -1,14 +1,27 @@
 import { create } from 'zustand';
 import { rtdb } from '../firebase/config';
-import { ref, onValue, get, set as fbset, update, remove, push, runTransaction } from 'firebase/database';
 import { useAuthStore } from '../store/authStore';
+import {
+  ref,
+  onValue,
+  get as fbGet,
+  set as fbSet,
+  update,
+  remove,
+  push,
+  runTransaction,
+} from 'firebase/database';
+
+// ----------------------
+// Types (same as yours)
+// ----------------------
 interface BingoCard {
   id: string;
   numbers: number[][];
   serialNumber: number;
   claimed: boolean;
   claimedBy?: string;
-  roomId?: string; // ✅ Add roomId property
+  roomId?: string;
 }
 
 interface Room {
@@ -20,15 +33,20 @@ interface Room {
   isDemoRoom: boolean;
   currentPlayers: number;
   gameStatus: 'waiting' | 'countdown' | 'playing' | 'ended';
-  countdownStartedBy : string,
+  countdownStartedBy: string | null;
   calledNumbers: number[];
-  winner?: string;
-  payout?: number;
-  countdownEndAt: number, 
+  winner?: string | null;
+  payout?: number | null;
+  countdownEndAt: number | null;
   players?: { [id: string]: { id: string; username: string; betAmount: number; cardId: string } };
-  gameId?: string;
-  nextGameCountdownEndAt?: number;
+  gameId?: string | null;
+  nextGameCountdownEndAt?: number | null;
+}
 
+interface GamePayload {
+  drawnNumbers: number[];
+  startedAt: number;
+  drawIntervalMs: number;
 }
 
 interface GameState {
@@ -37,375 +55,475 @@ interface GameState {
   selectedCard: BingoCard | null;
   bingoCards: BingoCard[];
   loading: boolean;
-  startingGame: boolean; // ✅ Prevent multiple simultaneous start game calls
+  startingGame: boolean;
   fetchRooms: () => void;
   joinRoom: (roomId: string) => void;
   selectCard: (cardId: string) => void;
   placeBet: () => Promise<boolean>;
-  checkBingo: () => Promise<boolean>;
+  cancelBet: (cardId?: string) => Promise<boolean>;
+  claimBingo: () => Promise<boolean>;
   displayedCalledNumbers: { [roomId: string]: number[] };
   startNumberStream: (roomId: string, gameId: string) => void;
 }
 
+// ----------------------
+// Helpers
+// ----------------------
+function range(n: number) {
+  return Array.from({ length: n }, (_, i) => i + 1);
+}
+
+// deterministic RNG (mulberry32) so that one client can generate same sequence
+function mulberry32(a: number) {
+  return function () {
+    var t = (a += 0x6d2b79f5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function seededShuffle<T>(arr: T[], seed: number) {
+  const result = arr.slice();
+  const random = mulberry32(seed);
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+// ----------------------
+// Store
+// ----------------------
 export const useGameStore = create<GameState>((set, get) => ({
   rooms: [],
-  displayedCalledNumbers: [],
   currentRoom: null,
   selectedCard: null,
   bingoCards: [],
   loading: false,
-  startingGame: false, // ✅ Initialize startingGame flag
- // add this
- 
-  startGameIfCountdownEnded: async () => {
-  const { currentRoom, startingGame } = get();
-  if (!currentRoom || startingGame) return;
+  startingGame: false,
+  displayedCalledNumbers: {},
 
-  // Only trigger if countdown ended
-  if (currentRoom.gameStatus !== "countdown" || !currentRoom.countdownEndAt) return;
-  if (Date.now() < currentRoom.countdownEndAt) return;
-
-  set({ startingGame: true });
-
-  try {
-    const res = await fetch("/api/start-game", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ roomId: currentRoom.id }),
-    });
-
-    const data = await res.json();
-    console.log("✅ Game started:", data);
-  } catch (err) {
-    console.error("❌ Failed to start game:", err);
-  } finally {
-    set({ startingGame: false });
-  }
-},
-   startNumberStream: (roomId, gameId) => {
-  const gameRef = ref(rtdb, `games/${gameId}`);
-  
-  onValue(gameRef, (snapshot) => {
-    const data = snapshot.val();
-    if (!data || !data.drawnNumbers || !data.startedAt) return;
-
-    const { drawnNumbers, startedAt, drawIntervalMs } = data;
-    const elapsed = Date.now() - startedAt;
-    let currentIndex = Math.floor(elapsed / drawIntervalMs);
-
-    if (currentIndex > drawnNumbers.length) currentIndex = drawnNumbers.length;
-
-    set((state) => ({
-      displayedCalledNumbers: {
-        ...state.displayedCalledNumbers,
-        [roomId]: drawnNumbers.slice(0, currentIndex),
-      },
-    }));
-
-    let i = currentIndex;
-    const interval = setInterval(() => {
-      if (i >= drawnNumbers.length) {
-        clearInterval(interval);
-        get().endGame(roomId);
-        return;
-      }
-
-      set((state) => ({
-        displayedCalledNumbers: {
-          ...state.displayedCalledNumbers,
-          [roomId]: [...(state.displayedCalledNumbers[roomId] || []), drawnNumbers[i]],
-        },
-      }));
-      i++;
-    }, drawIntervalMs);
-  });
-},
-
-  endGame: async (roomId: string) => {
-  try {
-    const roomRef = ref(rtdb, `rooms/${roomId}`);
-    const bingoCardsRef = ref(rtdb, `rooms/${roomId}/bingoCards`);
-    const cooldownDuration = 1 * 60 * 1000; // ✅ 1 min cooldown
-    const nextGameCountdownEndAt = Date.now() + cooldownDuration;
-
-    // Step 1: End the game
-    await update(roomRef, {
-      gameStatus: "ended",
-      gameId: null,
-      calledNumbers: [],
-      countdownEndAt: null,
-      countdownStartedBy: null,
-      nextGameCountdownEndAt,
-    });
-
-    console.log("✅ Game ended. Next round countdown started.");
-
-    // Step 2: After cooldown, reset room + unclaim all cards
-    setTimeout(async () => {
-  try {
-    // ✅ Reset the room back to waiting
-    await update(roomRef, {
-      gameStatus: "waiting",
-      nextGameCountdownEndAt: null, // optional
-    });
-
-    console.log("✅ Room reset to waiting after cooldown.");
-  } catch (err) {
-    console.error("❌ Failed to reset cards/room:", err);
-  }
-}, cooldownDuration);
-
-  } catch (err) {
-    console.error("❌ Failed to end game:", err);
-  }
-},
-
+  // ----------------------
+  // Fetch rooms (listener)
+  // ----------------------
   fetchRooms: () => {
     const roomsRef = ref(rtdb, 'rooms');
     onValue(roomsRef, (snapshot) => {
       const data = snapshot.val();
       const rooms: Room[] = data
-        ? Object.entries(data).map(([id, value]: [string, any]) => ({ id, ...value }))
+        ? Object.entries(data).map(([id, value]: [string, any]) => ({ id, ...(value as object) } as Room))
         : [];
       set({ rooms });
     });
   },
 
+  // ----------------------
+  // Join a room (listen to room + ensure client reacts only)
+  // ----------------------
+  joinRoom: (roomId: string) => {
+    const roomRef = ref(rtdb, `rooms/${roomId}`);
 
-joinRoom: (roomId: string) => {
-  const roomRef = ref(rtdb, "rooms/" + roomId);
+    onValue(roomRef, (snapshot) => {
+      if (!snapshot.exists()) {
+        set({ currentRoom: null });
+        return;
+      }
 
-  onValue(roomRef, (snapshot) => {
-  if (!snapshot.exists()) {
-    set({ currentRoom: null });
-    return;
-  }
+      const updatedRoom = { id: roomId, ...(snapshot.val() as any) } as Room;
+      set({ currentRoom: updatedRoom });
 
-  const updatedRoom = { id: roomId, ...snapshot.val() } as Room;
-  set({ currentRoom: updatedRoom });
-  // ✅ Always fetch cards
-  get().fetchBingoCards();
+      // Always fetch cards for the joined room
+      get().fetchBingoCards();
 
-  // ✅ Count how many players actually placed bets (claimed cards)
-  const activePlayers = updatedRoom.players
-    ? Object.values(updatedRoom.players).filter(
-        (p: any) => p.betAmount && p.cardId
-      )
-    : [];
+      // Auto-cancel stale countdowns (if below 2 active players)
+      const activePlayers = updatedRoom.players
+        ? Object.values(updatedRoom.players).filter((p: any) => p.betAmount && p.cardId)
+        : [];
 
-  const countdownRef = ref(rtdb, `rooms/${roomId}`);
+      if (
+        activePlayers.length < 2 &&
+        updatedRoom.gameStatus === 'countdown' &&
+        (updatedRoom.countdownEndAt || 0) > Date.now()
+      ) {
+        // Use a transaction to safely revert the countdown only when still in countdown
+        runTransaction(ref(rtdb, `rooms/${roomId}`), (room: any) => {
+          if (!room) return;
+          if (room.gameStatus === 'countdown' && (room.countdownEndAt || 0) > Date.now()) {
+            room.gameStatus = 'waiting';
+            room.countdownEndAt = null;
+            room.countdownStartedBy = null;
+          }
+          return room;
+        });
+        return;
+      }
 
-  // ❌ Cancel stale countdown if <2 players
-if (
-  activePlayers.length < 2 &&
-  updatedRoom.gameStatus === "countdown" &&
-  updatedRoom.countdownEndAt > Date.now()
-) {
-  (async () => {
-    await update(countdownRef, {
-      gameStatus: "waiting",
-      countdownEndAt: null,
-      countdownStartedBy: null,
+      // If we have 2+ active players and room is waiting -> try to start countdown using transaction
+      if (
+        activePlayers.length >= 2 &&
+        updatedRoom.gameStatus === 'waiting' &&
+        (!(updatedRoom.countdownEndAt || 0) || (updatedRoom.countdownEndAt || 0) < Date.now()) &&
+        !updatedRoom.countdownStartedBy
+      ) {
+        const user = useAuthStore.getState().user;
+        if (!user?.telegramId) return;
+
+        const countdownDuration = 30 * 1000; // 30s
+        const countdownEndAt = Date.now() + countdownDuration;
+
+        // Transaction ensures only one client sets the countdown
+        runTransaction(ref(rtdb, `rooms/${roomId}`), (room: any) => {
+          if (!room) return;
+          // double-check conditions
+          const playersObj = room.players || {};
+          const activeCount = Object.values(playersObj).filter((p: any) => p.betAmount && p.cardId).length;
+          if (activeCount >= 2 && room.gameStatus === 'waiting' && !room.countdownStartedBy) {
+            room.gameStatus = 'countdown';
+            room.countdownEndAt = countdownEndAt;
+            room.countdownStartedBy = user.telegramId;
+          }
+          return room;
+        });
+      }
+
+      // If ended and cooldown expired, reset to waiting using transaction
+      if (
+        updatedRoom.gameStatus === 'ended' &&
+        (updatedRoom.nextGameCountdownEndAt || 0) <= Date.now() &&
+        (updatedRoom.nextGameCountdownEndAt || 0) > 0
+      ) {
+        runTransaction(ref(rtdb, `rooms/${roomId}`), (room: any) => {
+          if (!room) return;
+          if (room.gameStatus === 'ended' && (room.nextGameCountdownEndAt || 0) <= Date.now()) {
+            room.gameStatus = 'waiting';
+            room.nextGameCountdownEndAt = null;
+          }
+          return room;
+        });
+      }
     });
-  })();
-  return;
-}
-
-// ✅ Start countdown if 2+ active players, room waiting, and no countdown in progress
-if (
-  activePlayers.length >= 2 &&
-  updatedRoom.gameStatus === "waiting" &&
-  (!updatedRoom.countdownEndAt || updatedRoom.countdownEndAt < Date.now()) &&
-  !updatedRoom.countdownStartedBy
-) {
-  const { user } = useAuthStore.getState();
-  if (!user?.telegramId) return;
-
-  const countdownDuration = 30 * 1000; // 30s
-  const countdownEndAt = Date.now() + countdownDuration;
-
-  update(countdownRef, {
-    gameStatus: "countdown",
-    countdownEndAt,
-    countdownStartedBy: user.telegramId,
-  });
-}
-if (updatedRoom.gameStatus === "ended" && updatedRoom.nextGameCountdownEndAt <= Date.now()) {
-  update(ref(rtdb, `rooms/${roomId}`), {
-    gameStatus: "waiting",
-    nextGameCountdownEndAt: null,
-  });
-}
-
-});
-},
-
-  
-  selectCard: (cardId: string) => {
-    const { bingoCards } = get();
-    const card = bingoCards.find(c => c.id === cardId);
-    if (card && !card.claimed) {
-      set({ selectedCard: card });
-    }
   },
 
+  // ----------------------
+  // Select a card locally (UI only)
+  // ----------------------
+  selectCard: (cardId: string) => {
+    const card = get().bingoCards.find((c) => c.id === cardId);
+    if (card && !card.claimed) set({ selectedCard: card });
+  },
 
-placeBet: async () => {
-  const { currentRoom, selectedCard } = get();
-  const { user } = useAuthStore.getState();
-  if (!currentRoom || !selectedCard || !user) return false;
+  // ----------------------
+  // Place bet (atomic claim card + add player)
+  // ----------------------
+  placeBet: async () => {
+    const { currentRoom, selectedCard } = get();
+    const { user } = useAuthStore.getState();
+    if (!currentRoom || !selectedCard || !user) return false;
 
-  const userId = user.telegramId;
-  if (!userId) {
-    console.error("❌ No valid telegramId for user:", user);
-    return false;
-  }
+    const userId = user.telegramId;
+    if (!userId) return false;
 
-  if ((user.balance || 0) < currentRoom.betAmount) {
-    alert("Insufficient balance!");
-    return false;
-  }
-
-  try {
-    const cardRef = ref(rtdb, `rooms/${currentRoom.id}/bingoCards/${selectedCard.id}`);
-
-    // 🔒 Transaction ensures atomic update
-    const result = await runTransaction(cardRef, (card: any) => {
-      if (card) {
-        if (card.claimed) {
-          // ❌ Already taken
-          return; 
-        }
-        // ✅ Mark card as claimed
-        card.claimed = true;
-        card.claimedBy = userId;
-      }
-      return card;
-    });
-
-    if (!result.committed) {
-      alert("❌ This card was already claimed by another player!");
+    if ((user.balance || 0) < currentRoom.betAmount) {
+      alert('Insufficient balance!');
       return false;
     }
 
-    // ✅ Add player to room if card claim succeeded
-    const playerRef = ref(rtdb, `rooms/${currentRoom.id}/players/${userId}`);
-    await fbset(playerRef, {
-      telegramId: userId,
-      username: user.username,
-      betAmount: currentRoom.betAmount,
-      cardId: selectedCard.id,
-    });
+    try {
+      const cardRef = ref(rtdb, `rooms/${currentRoom.id}/bingoCards/${selectedCard.id}`);
 
-    return true;
-  } catch (err) {
-    console.error("❌ Error placing bet:", err);
-    return false;
-  }
-},
+      const result = await runTransaction(cardRef, (card: any) => {
+        if (!card) return;
+        if (card.claimed) return; // somebody else claimed
+        card.claimed = true;
+        card.claimedBy = userId;
+        return card;
+      });
 
-
-cancelBet: async (cardId?: string) => {
-  const { selectedCard, currentRoom } = get();
-  const { user } = useAuthStore.getState();
-
-  if (!currentRoom || !user) return false;
-
-  // Use passed cardId OR fallback to selectedCard.id
-  const targetCardId = cardId || selectedCard?.id;
-  if (!targetCardId) {
-    console.error("❌ Cancel bet failed: no target card id");
-    return false;
-  }
-
-  try {
-    // ✅ Unclaim the card
-    const cardRef = ref(rtdb, `rooms/${currentRoom.id}/bingoCards/${targetCardId}`);
-    await update(cardRef, {
-      claimed: false,
-      claimedBy: null,
-    });
-
-    // ✅ Remove player entry from the room
-    const playerRef = ref(rtdb, `rooms/${currentRoom.id}/players/${user.telegramId}`);
-    await remove(playerRef);
-
-    // ✅ Reset local state if this was the selected card
-    if (selectedCard?.id === targetCardId) {
-      set({ selectedCard: null });
-    }
-
-    console.log("✅ Bet canceled successfully");
-    return true;
-  } catch (err) {
-    console.error("❌ Cancel bet failed:", err);
-    return false;
-  }
-},
-
-  checkBingo: async () => {
-    const { selectedCard, currentRoom } = get();
-    if (!selectedCard || !currentRoom) return false;
-    
-    // Check for bingo patterns
-    const { numbers } = selectedCard;
-    const { calledNumbers } = currentRoom;
-    
-    // Check rows
-    for (let row = 0; row < 5; row++) {
-      if (numbers[row].every(num => calledNumbers.includes(num))) {
-        return true;
+      if (!result.committed) {
+        alert('This card was already claimed by another player!');
+        return false;
       }
-    }
-    
-    // Check columns
-    for (let col = 0; col < 5; col++) {
-      if (numbers.every(row => calledNumbers.includes(row[col]))) {
-        return true;
-      }
-    }
-    
-    // Check diagonals
-    const diagonal1 = [numbers[0][0], numbers[1][1], numbers[2][2], numbers[3][3], numbers[4][4]];
-    const diagonal2 = [numbers[0][4], numbers[1][3], numbers[2][2], numbers[3][1], numbers[4][0]];
-    
-    if (diagonal1.every(num => calledNumbers.includes(num)) ||
-        diagonal2.every(num => calledNumbers.includes(num))) {
+
+      // Add player to room
+      const playerRef = ref(rtdb, `rooms/${currentRoom.id}/players/${userId}`);
+      await fbSet(playerRef, {
+        telegramId: userId,
+        username: user.username,
+        betAmount: currentRoom.betAmount,
+        cardId: selectedCard.id,
+      });
+
       return true;
+    } catch (err) {
+      console.error('placeBet error', err);
+      return false;
     }
-    
-    return false;
   },
-  
+
+  // ----------------------
+  // Cancel bet (unclaim + remove player)
+  // ----------------------
+  cancelBet: async (cardId?: string) => {
+    const { currentRoom, selectedCard } = get();
+    const { user } = useAuthStore.getState();
+    if (!currentRoom || !user) return false;
+
+    const targetCardId = cardId || selectedCard?.id;
+    if (!targetCardId) return false;
+
+    try {
+      const cardRef = ref(rtdb, `rooms/${currentRoom.id}/bingoCards/${targetCardId}`);
+      await update(cardRef, { claimed: false, claimedBy: null });
+
+      const playerRef = ref(rtdb, `rooms/${currentRoom.id}/players/${user.telegramId}`);
+      await remove(playerRef);
+
+      if (selectedCard?.id === targetCardId) set({ selectedCard: null });
+
+      return true;
+    } catch (err) {
+      console.error('cancelBet error', err);
+      return false;
+    }
+  },
+
+  // ----------------------
+  // Start game: this is called by ANY client when countdown ended.
+  // A transaction ensures only one client actually creates the game and flips room to 'playing'.
+  // The client that wins the transaction will create a deterministic sequence of numbers
+  // and write the games/{gameId} payload. All clients then listen to games/{gameId}.
+  // ----------------------
+  startingGame: false,
+
+  // Note: this helper may be called by clients periodically (e.g. via an effect) but
+  // the transaction makes it safe.
+  async startGameIfCountdownEnded() {
+    const { currentRoom, startingGame } = get();
+    if (!currentRoom || startingGame) return;
+    if (currentRoom.gameStatus !== 'countdown' || !(currentRoom.countdownEndAt || 0)) return;
+    if (Date.now() < (currentRoom.countdownEndAt || 0)) return; // not yet
+
+    set({ startingGame: true });
+
+    try {
+      // Transaction on the room ensures only one client becomes the "starter"
+      const roomRef = ref(rtdb, `rooms/${currentRoom.id}`);
+      await runTransaction(roomRef, (room: any) => {
+        if (!room) return;
+        // double-check conditions server-side
+        if (room.gameStatus === 'countdown' && (room.countdownEndAt || 0) <= Date.now() && !room.gameId) {
+          room.gameStatus = 'playing';
+          // reserve a gameId that we will create below
+          room.gameId = 'pending';
+        }
+        return room;
+      });
+
+      // re-read to see if we became the starter
+      const roomSnap = await fbGet(roomRef);
+      const roomVal = roomSnap.val();
+      if (!roomVal) return;
+
+      if (roomVal.gameStatus !== 'playing' || roomVal.gameId !== 'pending') {
+        // someone else started or conditions changed
+        return;
+      }
+
+      // We are responsible for creating the game payload atomically and updating room.gameId to the real id
+      const gamesRefRoot = ref(rtdb, 'games');
+      const newGameRef = push(gamesRefRoot);
+      const gameId = newGameRef.key as string;
+
+      // deterministic seed uses roomId + countdownEndAt so all clients can generate same sequence if needed
+      const seed = (hashCode(currentRoom.id) ^ (currentRoom.countdownEndAt || 0)) >>> 0;
+
+      const numbers = seededShuffle(range(75), seed);
+      const drawnNumbers = numbers; // full shuffled list
+      const startedAt = Date.now();
+      const drawIntervalMs = 3000;
+
+      const payload: GamePayload = {
+        drawnNumbers,
+        startedAt,
+        drawIntervalMs,
+      };
+
+      // write game payload
+      await fbSet(ref(rtdb, `games/${gameId}`), payload);
+
+      // update room with real gameId and clear countdown fields
+      await update(ref(rtdb, `rooms/${currentRoom.id}`), {
+        gameId,
+        gameStatus: 'playing',
+        countdownEndAt: null,
+        countdownStartedBy: null,
+        calledNumbers: [],
+      });
+
+      // done
+    } catch (err) {
+      console.error('startGameIfCountdownEnded error', err);
+    } finally {
+      set({ startingGame: false });
+    }
+  },
+
+  // ----------------------
+  // startNumberStream: listens to games/{gameId} and derives called numbers based on startedAt & interval
+  // No one writes partial calledNumbers — it's derived by each client from the canonical drawnNumbers + startedAt
+  // ----------------------
+  startNumberStream: (roomId: string, gameId: string) => {
+    if (!gameId) return;
+    const gameRef = ref(rtdb, `games/${gameId}`);
+
+    onValue(gameRef, (snapshot) => {
+      const data = snapshot.val() as GamePayload | null;
+      if (!data || !data.drawnNumbers || !data.startedAt) return;
+
+      const { drawnNumbers, startedAt, drawIntervalMs } = data;
+
+      // compute how many numbers should be visible now
+      const elapsed = Date.now() - startedAt;
+      const index = Math.max(0, Math.floor(elapsed / drawIntervalMs));
+      const clampedIndex = Math.min(index, drawnNumbers.length);
+
+      // Update displayedCalledNumbers for the room in local store
+      set((state) => ({
+        displayedCalledNumbers: {
+          ...state.displayedCalledNumbers,
+          [roomId]: drawnNumbers.slice(0, clampedIndex),
+        },
+      }));
+
+      // If we've reached the end, trigger endGame transaction
+      if (clampedIndex >= drawnNumbers.length) {
+        // endGame via transaction to ensure only one client executes cleanup
+        (async () => {
+          try {
+            const roomRef = ref(rtdb, `rooms/${roomId}`);
+            await runTransaction(roomRef, (room: any) => {
+              if (!room) return;
+              if (room.gameStatus === 'playing') {
+                room.gameStatus = 'ended';
+                room.gameId = null;
+                room.calledNumbers = [];
+                room.countdownEndAt = null;
+                room.countdownStartedBy = null;
+                room.nextGameCountdownEndAt = Date.now() + 60 * 1000; // 1min cooldown
+              }
+              return room;
+            });
+          } catch (err) {
+            console.error('endGame transaction error', err);
+          }
+        })();
+      }
+    });
+  },
+
+  // ----------------------
+  // claimBingo: client calls this when they believe they have bingo
+  // It reads games/{gameId} to fetch drawnNumbers up to now, validates the player's card,
+  // and uses a transaction on the room to mark the winner atomically (first come wins after validation).
+  // ----------------------
+  claimBingo: async () => {
+    const { currentRoom, selectedCard } = get();
+    const { user } = useAuthStore.getState();
+    if (!currentRoom || !selectedCard || !user) return false;
+    if (!currentRoom.gameId) return false;
+
+    try {
+      const gameSnap = await fbGet(ref(rtdb, `games/${currentRoom.gameId}`));
+      const game: GamePayload | null = gameSnap.val();
+      if (!game) return false;
+
+      const elapsed = Date.now() - game.startedAt;
+      const index = Math.max(0, Math.floor(elapsed / game.drawIntervalMs));
+      const called = game.drawnNumbers.slice(0, Math.min(index, game.drawnNumbers.length));
+
+      // validate card locally
+      const cardNumbers = selectedCard.numbers;
+      const isBingo = checkCardHasBingo(cardNumbers, called);
+      if (!isBingo) return false;
+
+      // Now try to atomically set winner in room
+      const roomRef = ref(rtdb, `rooms/${currentRoom.id}`);
+      const res = await runTransaction(roomRef, (room: any) => {
+        if (!room) return;
+        // if winner already set, reject
+        if (room.winner) return;
+        // still playing?
+        if (room.gameStatus !== 'playing') return;
+        room.winner = user.telegramId;
+        room.payout = room.betAmount ? room.betAmount * (Object.keys(room.players || {}).length || 1) : 0; // simple payout calc
+        room.gameStatus = 'ended';
+        room.gameId = null;
+        room.nextGameCountdownEndAt = Date.now() + 60 * 1000;
+        return room;
+      });
+
+      return Boolean(res.committed);
+    } catch (err) {
+      console.error('claimBingo error', err);
+      return false;
+    }
+  },
+
+  // ----------------------
+  // fetchBingoCards
+  // ----------------------
   fetchBingoCards: () => {
-      const { currentRoom } = get();
-  if (!currentRoom) return;
+    const { currentRoom } = get();
+    if (!currentRoom) return;
 
     const cardsRef = ref(rtdb, `rooms/${currentRoom.id}/bingoCards`);
     onValue(cardsRef, (snapshot) => {
       const data = snapshot.val();
       const cards: BingoCard[] = data
-        ? Object.entries(data).map(([id, value]: [string, any]) => ({ id, ...value }))
+        ? Object.entries(data).map(([id, value]: [string, any]) => ({ id, ...(value as object) } as BingoCard))
         : [];
       set({ bingoCards: cards });
-      const { user } = useAuthStore.getState();
-const { selectedCard } = get();
 
-if (user) {
-  const userCard = cards.find(c => c.claimedBy === user.telegramId);
+      const user = useAuthStore.getState().user;
+      const selectedCard = get().selectedCard;
 
-  // ✅ Only set if user has a claimed card OR nothing is selected yet
-  if (userCard && (!selectedCard || selectedCard.id !== userCard.id)) {
-    set({ selectedCard: userCard });
-  } else if (!userCard && !selectedCard) {
-    set({ selectedCard: null });
-  }
-}
-
+      if (user) {
+        const userCard = cards.find((c) => c.claimedBy === user.telegramId);
+        if (userCard && (!selectedCard || selectedCard.id !== userCard.id)) {
+          set({ selectedCard: userCard });
+        } else if (!userCard && !selectedCard) {
+          set({ selectedCard: null });
+        }
+      }
     });
   },
-
-  
-
 }));
 
+// ----------------------
+// Utility functions used above
+// ----------------------
+function checkCardHasBingo(numbers: number[][], calledNumbers: number[]) {
+  // rows
+  for (let r = 0; r < 5; r++) {
+    if (numbers[r].every((n) => calledNumbers.includes(n))) return true;
+  }
+  // cols
+  for (let c = 0; c < 5; c++) {
+    if (numbers.every((row) => calledNumbers.includes(row[c]))) return true;
+  }
+  // diagonals
+  const diag1 = [numbers[0][0], numbers[1][1], numbers[2][2], numbers[3][3], numbers[4][4]];
+  const diag2 = [numbers[0][4], numbers[1][3], numbers[2][2], numbers[3][1], numbers[4][0]];
+  if (diag1.every((n) => calledNumbers.includes(n)) || diag2.every((n) => calledNumbers.includes(n))) return true;
+  return false;
+}
+
+function hashCode(str: string) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
+  }
+  return h;
+}

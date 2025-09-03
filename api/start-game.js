@@ -10,6 +10,56 @@ function generateNumbers(count = 25) {
   }
   return numbers;
 }
+function pickWinningNumbers(card) {
+  const numbers = card.numbers;
+  const size = numbers.length;
+  const center = Math.floor(size / 2);
+
+  const patterns = [];
+
+  // Rows
+  for (let r = 0; r < size; r++) patterns.push(numbers[r]);
+  // Columns
+  for (let c = 0; c < size; c++) patterns.push(numbers.map(row => row[c]));
+  // Diagonals
+  patterns.push(numbers.map((row, i) => row[i]));
+  patterns.push(numbers.map((row, i) => row[size - 1 - i]));
+  // Small cross
+  patterns.push([
+    numbers[center][center],
+    numbers[center - 1][center],
+    numbers[center + 1][center],
+    numbers[center][center - 1],
+    numbers[center][center + 1],
+  ]);
+  // Small X
+  patterns.push([
+    numbers[center][center],
+    numbers[center - 1][center - 1],
+    numbers[center - 1][center + 1],
+    numbers[center + 1][center - 1],
+    numbers[center + 1][center + 1],
+  ]);
+  // Four corners
+  patterns.push([
+    numbers[0][0],
+    numbers[0][size - 1],
+    numbers[size - 1][0],
+    numbers[size - 1][size - 1],
+  ]);
+
+  // Pick a random winning pattern
+  const winningPattern = patterns[Math.floor(Math.random() * patterns.length)];
+
+  // Generate the rest of the numbers randomly
+  const allNumbers = new Set(winningPattern);
+  while (allNumbers.size < 25) { // or up to 75 for full pool
+    const num = Math.floor(Math.random() * 75) + 1;
+    allNumbers.add(num);
+  }
+
+  return Array.from(allNumbers);
+}
 
 export default async function handler(req, res) {
   const { roomId } = req.body;
@@ -23,7 +73,17 @@ export default async function handler(req, res) {
       if (!room || room.gameStatus !== "countdown") return room;
 
       const gameId = uuidv4();
-      const drawnNumbers = generateNumbers();
+      // pick a random card from room players
+const playerIds = Object.keys(room.players || {});
+let drawnNumbers = [];
+if (playerIds.length > 0) {
+  const randomPlayerId = playerIds[Math.floor(Math.random() * playerIds.length)];
+  const card = room.players[randomPlayerId].card; // assuming each player has a card object
+  drawnNumbers = pickWinningNumbers(card);
+} else {
+  drawnNumbers = generateNumbers(); // fallback
+}
+
       const drawIntervalMs = 2000;
 
       room.gameStatus = "playing";

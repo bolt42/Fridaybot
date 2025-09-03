@@ -83,30 +83,40 @@ export const useGameStore = create<GameState>((set, get) => ({
   }
 },
     startNumberStream: (roomId, gameId) => {
-    const gameRef = ref(rtdb, `games/${gameId}`);
-    onValue(gameRef, (snapshot) => {
-      const data = snapshot.val();
-      if (!data || !data.drawnNumbers) return;
+  const gameRef = ref(rtdb, `games/${gameId}`);
+  onValue(gameRef, (snapshot) => {
+    const data = snapshot.val();
+    if (!data || !data.drawnNumbers || !data.startedAt) return;
 
-      const numbers = data.drawnNumbers;
+    const { drawnNumbers, startedAt, drawIntervalMs } = data;
 
-      let i = 0;
-      set({ displayedCalledNumbers: [] });
+    const elapsed = Date.now() - startedAt;
+    let currentIndex = Math.floor(elapsed / drawIntervalMs);
 
-      const interval = setInterval(() => {
-        if (i >= numbers.length) {
-          clearInterval(interval);
-           get().endGame(roomId);
-          return;
-        }
+    // Clamp so we don’t overshoot
+    if (currentIndex > drawnNumbers.length) {
+      currentIndex = drawnNumbers.length;
+    }
 
-        set((state) => ({
-          displayedCalledNumbers: [...state.displayedCalledNumbers, numbers[i]],
-        }));
-        i++;
-      }, 3000); // 1 second gap
-    });
-  },
+    // ✅ Show all numbers that should already be revealed
+    set({ displayedCalledNumbers: drawnNumbers.slice(0, currentIndex) });
+
+    // ✅ Continue drawing from currentIndex forward
+    let i = currentIndex;
+    const interval = setInterval(() => {
+      if (i >= drawnNumbers.length) {
+        clearInterval(interval);
+        get().endGame(roomId);
+        return;
+      }
+
+      set((state) => ({
+        displayedCalledNumbers: [...state.displayedCalledNumbers, drawnNumbers[i]],
+      }));
+      i++;
+    }, drawIntervalMs);
+  });
+},
   endGame: async (roomId: string) => {
   try {
     const roomRef = ref(rtdb, `rooms/${roomId}`);

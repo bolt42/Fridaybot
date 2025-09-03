@@ -309,9 +309,15 @@ return (
         {/* Current Call */}
         <div className="relative flex flex-col items-center justify-center bg-white/10 p-2 rounded border border-white/20 min-h-[100px]">
   <span className="text-[10px] mb-1">Current</span>
-<div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-lg font-bold shadow">
-  {displayedCalledNumbers.length > 0 ? displayedCalledNumbers.at(-1) : "-"}
-</div>
+
+  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-lg font-bold shadow">
+    {displayedCalledNumbers.length > 0 ? displayedCalledNumbers.at(-1) : "-"}
+  </div>
+
+  {/* ✅ Numbers counter bottom-right */}
+  <span className="absolute bottom-1 right-2 text-[10px] text-gray-300">
+    {displayedCalledNumbers.length}/25
+  </span>
 
   {currentRoom?.gameStatus === "ended" && currentRoom.nextGameCountdownEndAt && (
     <CountdownOverlay
@@ -320,6 +326,7 @@ return (
     />
   )}
 </div>
+
 
 
         {/* Card header */}

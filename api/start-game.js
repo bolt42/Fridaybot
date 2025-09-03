@@ -32,7 +32,7 @@ export default async function handler(req, res) {
       // ✅ Create game entity inside transaction
       const gameId = uuidv4();
       const drawnNumbers = generateNumbers();
-
+      const drawIntervalMs = 2000;
       room.gameStatus = "playing";
       room.gameId = gameId;
       room.calledNumbers = [];
@@ -50,6 +50,8 @@ export default async function handler(req, res) {
         roomId,
         drawnNumbers,
         createdAt: Date.now(),
+         startedAt: Date.now(),      // ✅ track start time
+        drawIntervalMs, 
         status: "active",
         totalPayout,
       };

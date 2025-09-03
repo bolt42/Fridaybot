@@ -143,7 +143,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         // ✅ Reset the room back to waiting
         await update(roomRef, {
           gameStatus: "waiting",
-          nextGameCountdownEndAt: null,
+          nextGameCountdownEndAt: null, 
           players: {}, // optional: clear players too
         });
 

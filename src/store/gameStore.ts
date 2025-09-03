@@ -135,6 +135,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           const updates: any = {};
           snapshot.forEach((cardSnap) => {
             updates[`${cardSnap.key}/claimed`] = false;
+            updates[`${cardSnap.key}/claimedBy`] = null;
           });
           await update(bingoCardsRef, updates);
           console.log("♻️ All cards reset to unclaimed.");
@@ -143,7 +144,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         // ✅ Reset the room back to waiting
         await update(roomRef, {
           gameStatus: "waiting",
-          nextGameCountdownEndAt: null, 
+          nextGameCountdownEndAt: null,
           players: {}, // optional: clear players too
         });
 

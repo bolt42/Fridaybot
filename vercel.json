@@ -9,7 +9,7 @@
   "crons": [
     {
       "path": "/api/client-countdown",
-      "schedule": "*/5 * * * * *"
+      "schedule": "*/5 * * * *"
     }
   ]
 }

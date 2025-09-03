@@ -283,15 +283,20 @@ return (
       {/* Right side (Your Card) */}
       <div className="w-3/5 bg-white/10 p-2 rounded border border-white/20 text-xs">
         {/* Current Call */}
-        <div className="flex flex-col items-center justify-center bg-white/10 p-2 rounded border border-white/20 min-h-[100px]">
-          <span className="text-[10px] mb-1">Current</span>
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-lg font-bold shadow">
-  {currentRoom?.lastCalledNumber ?? "-"}
+        <div className="relative flex flex-col items-center justify-center bg-white/10 p-2 rounded border border-white/20 min-h-[100px]">
+  <span className="text-[10px] mb-1">Current</span>
+<div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-lg font-bold shadow">
+  {displayedCalledNumbers.length > 0 ? displayedCalledNumbers.at(-1) : "-"}
 </div>
-       {currentRoom?.gameStatus === "ended" && currentRoom.nextGameCountdownEndAt && (
-  <CountdownOverlay countdownEndAt={currentRoom.nextGameCountdownEndAt} label="Next round starting in" />
-)}
-        </div>
+
+  {currentRoom?.gameStatus === "ended" && currentRoom.nextGameCountdownEndAt && (
+    <CountdownOverlay
+      countdownEndAt={currentRoom.nextGameCountdownEndAt}
+      label="Next round starting in"
+    />
+  )}
+</div>
+
 
         {/* Card header */}
         <div className="flex justify-between items-center mb-1">

@@ -106,24 +106,31 @@ async function sendMessage(chatId, text, extra = {}) {
 }
 
 // ====================== USER MANAGEMENT ======================
+// ====================== USER MANAGEMENT ======================
 async function registerUserToFirebase(user) {
-const userRef = ref(rtdb, "users/" + user.id);
-const snapshot = await get(userRef);
+  const userRef = ref(rtdb, "users/" + user.id);
+  const snapshot = await get(userRef);
 
+  if (!snapshot.exists()) {
+    const now = new Date().toISOString();
 
-if (!snapshot.exists()) {
-const now = new Date().toISOString();
-const newUser = {
-telegramId: user.id.toString(),
-username: user.username || `user_${user.id}`,
-balance: 50,
-createdAt: now,
-updatedAt: now,
-lang: "en",
-};
-await set(userRef, newUser);
+    /** @type {User} */
+    const newUser = {
+      telegramId: user.id.toString(),
+      username: user.username || `user_${user.id}`,
+      balance: 50,             // initial balance
+      gamesPlayed: 0,          // start at 0
+      gamesWon: 0,             // start at 0
+      totalWinnings: 0,        // start at 0
+      language: "en",          // default language
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await set(userRef, newUser);
+  }
 }
-}
+
 // ====================== MESSAGE HELPERS ======================
 function extractUrlFromText(text) {
   const urlRegex = /(https?:\/\/[^\s]+)/g;

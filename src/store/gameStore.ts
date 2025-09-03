@@ -127,20 +127,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     // Step 2: After 3 min, reset the room + unclaim all cards
     ssetTimeout(async () => {
-  const cardsRef = ref(rtdb, `rooms/${roomId}/bingoCards`);
-  const cardsSnap = await get(cardsRef);
-
-  if (cardsSnap && cardsSnap.exists()) {
-    const updates: any = {};
-
-    cardsSnap.forEach((child) => {
-      updates[`${child.key}/claimed`] = false;
-      updates[`${child.key}/claimedBy`] = null; // reset owner too
-    });
-
-    await update(cardsRef, updates);
-    console.log("♻️ All cards reset fast.");
-  }
+ 
 
   // ✅ Reset the room to waiting
   await update(roomRef, {

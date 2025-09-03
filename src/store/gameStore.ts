@@ -110,7 +110,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   endGame: async (roomId: string) => {
   try {
     const roomRef = ref(rtdb, `rooms/${roomId}`);
-    const cooldownDuration = 1 * 60 * 1000; // ✅ 3 min cooldown
+    const bingoCardsRef = ref(rtdb, `rooms/${roomId}/bingoCards`);
+    const cooldownDuration = 1 * 60 * 1000; // ✅ 1 min cooldown
     const nextGameCountdownEndAt = Date.now() + cooldownDuration;
 
     // Step 1: End the game
@@ -125,25 +126,36 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     console.log("✅ Game ended. Next round countdown started.");
 
-    // Step 2: After 3 min, reset the room + unclaim all cards
+    // Step 2: After cooldown, reset room + unclaim all cards
     setTimeout(async () => {
- 
+      try {
+        // ✅ Reset all cards in the room
+        const snapshot = await get(bingoCardsRef);
+        if (snapshot.exists()) {
+          const updates: any = {};
+          snapshot.forEach((cardSnap) => {
+            updates[`${cardSnap.key}/claimed`] = false;
+          });
+          await update(bingoCardsRef, updates);
+          console.log("♻️ All cards reset to unclaimed.");
+        }
 
-  // ✅ Reset the room to waiting
-  await update(roomRef, {
-    gameStatus: "waiting",
-    nextGameCountdownEndAt: null,
-    players: {}, // optional: clear players too
-  });
+        // ✅ Reset the room back to waiting
+        await update(roomRef, {
+          gameStatus: "waiting",
+          nextGameCountdownEndAt: null,
+          players: {}, // optional: clear players too
+        });
 
-  console.log("✅ Room reset to waiting after cooldown.");
-}, cooldownDuration);
-
+        console.log("✅ Room reset to waiting after cooldown.");
+      } catch (err) {
+        console.error("❌ Failed to reset cards/room:", err);
+      }
+    }, cooldownDuration);
   } catch (err) {
     console.error("❌ Failed to end game:", err);
   }
 },
-
 
   fetchRooms: () => {
     const roomsRef = ref(rtdb, 'rooms');

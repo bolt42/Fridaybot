@@ -126,32 +126,32 @@ export const useGameStore = create<GameState>((set, get) => ({
     console.log("✅ Game ended. Next round countdown started.");
 
     // Step 2: After 3 min, reset the room + unclaim all cards
-    setTimeout(async () => {
-      const cardsRef = ref(rtdb, `rooms/${roomId}/bingoCards`);
+    ssetTimeout(async () => {
+  const cardsRef = ref(rtdb, `rooms/${roomId}/bingoCards`);
+  const cardsSnap = await get(cardsRef);
 
-      // ✅ Unclaim all cards in this room
-      const cardsSnap = await get(cardsRef);
-if (cardsSnap.exists()) {
-  const updates: any = {};
-  Object.keys(cardsSnap.val()).forEach((cardId) => {
-    updates[`${cardId}/claimed`] = false;
-   
+  if (cardsSnap && cardsSnap.exists()) {
+    const updates: any = {};
+
+    cardsSnap.forEach((child) => {
+      updates[`${child.key}/claimed`] = false;
+      updates[`${child.key}/claimedBy`] = null; // reset owner too
+    });
+
+    await update(cardsRef, updates);
+    console.log("♻️ All cards reset fast.");
+  }
+
+  // ✅ Reset the room to waiting
+  await update(roomRef, {
+    gameStatus: "waiting",
+    nextGameCountdownEndAt: null,
+    players: {}, // optional: clear players too
   });
 
-  await update(cardsRef, updates);
-  console.log("♻️ All cards reset fast.");
-}
+  console.log("✅ Room reset to waiting after cooldown.");
+}, cooldownDuration);
 
-
-      // ✅ Reset the room to waiting
-      await update(roomRef, {
-        gameStatus: "waiting",
-        nextGameCountdownEndAt: null,
-        players: {}, // optional: clear players too
-      });
-
-      console.log("✅ Room reset to waiting after cooldown.");
-    }, cooldownDuration);
   } catch (err) {
     console.error("❌ Failed to end game:", err);
   }

@@ -41,8 +41,8 @@ const CountdownOverlay = ({
       <div
         className={`bg-white text-black text-center shadow-xl flex flex-col items-center justify-center
           ${isNextRound 
-            ? "w-4/5 h-1.5/2 rounded scale-75"   // 🔹 1/4th size (next round)
-            : "w-3/5 h-3/5 rounded-xl p-2"}    // 🔹 30s countdown always fits
+            ? "w-4/5 h-4/5 rounded scale-75"   // 🔹 1/4th size (next round)
+            : "w-4/5 h-2/5 rounded-xl p-2"}    // 🔹 30s countdown always fits
         `}
       >
         <h2 className={`font-bold mb-2 ${isNextRound ? "text-1" : "text-l"}`}>

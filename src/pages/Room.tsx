@@ -41,22 +41,20 @@ const CountdownOverlay = ({
       <div
         className={`bg-white text-black text-center shadow-xl flex flex-col items-center justify-center
           ${isNextRound 
-            ? "w-full h-full rounded scale-50"  // 🔹 1/4th area of full size
-            : "mx-[10%] w-[80%] rounded-xl p-4"}
+            ? "w-1/2 h-1/2 rounded scale-75"   // 🔹 1/4th size (next round)
+            : "w-4/5 h-4/5 rounded-xl p-2"}    // 🔹 30s countdown always fits
         `}
       >
-        <h2 className={`font-bold mb-2 ${isNextRound ? "text-xl" : "text-3xl"}`}>
+        <h2 className={`font-bold mb-2 ${isNextRound ? "text-lg" : "text-2xl"}`}>
           {label}
         </h2>
-        <p className={`${isNextRound ? "text-3xl" : "text-6xl"} font-mono`}>
+        <p className={`${isNextRound ? "text-2xl" : "text-5xl"} font-mono`}>
           {formattedTime}
         </p>
       </div>
     </div>
   );
 };
-
-
 
 const Room: React.FC = () => {
   const { roomId } = useParams();

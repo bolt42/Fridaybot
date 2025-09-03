@@ -207,6 +207,12 @@ if (
     countdownStartedBy: user.telegramId,
   });
 }
+if (updatedRoom.gameStatus === "ended" && updatedRoom.nextGameCountdownEndAt <= Date.now()) {
+  update(ref(rtdb, `rooms/${roomId}`), {
+    gameStatus: "waiting",
+    nextGameCountdownEndAt: null,
+  });
+}
 
 });
 },

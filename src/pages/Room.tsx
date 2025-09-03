@@ -5,32 +5,55 @@ import { useLanguageStore } from '../store/languageStore';
 import { useGameStore } from '../store/gameStore';
 import { useAuthStore } from '../store/authStore';
 import BingoGrid from '../components/BingoGrid';
-const CountdownOverlay = ({ countdownEndAt, label }: { countdownEndAt: number; label: string }) => {
+const CountdownOverlay = ({
+  countdownEndAt,
+  label,
+}: {
+  countdownEndAt: number;
+  label: string;
+}) => {
   const [remaining, setRemaining] = React.useState(
     Math.max(0, Math.floor((countdownEndAt - Date.now()) / 1000))
   );
 
   React.useEffect(() => {
     const interval = setInterval(() => {
-      setRemaining(Math.max(0, Math.floor((countdownEndAt - Date.now()) / 1000)));
+      setRemaining(
+        Math.max(0, Math.floor((countdownEndAt - Date.now()) / 1000))
+      );
     }, 1000);
     return () => clearInterval(interval);
   }, [countdownEndAt]);
 
   if (remaining <= 0) return null;
 
+  const isNextRound = label === "Next round starting in";
+
+  // ✅ Format seconds into mm:ss
+  const minutes = Math.floor(remaining / 60)
+    .toString()
+    .padStart(2, "0");
+  const seconds = (remaining % 60).toString().padStart(2, "0");
+  const formattedTime = `${minutes}:${seconds}`;
+
   return (
     <div className="absolute inset-0 bg-black/70 flex items-center justify-center rounded">
-      <div className="bg-white text-black rounded-xl text-center shadow-xl mx-[10%] w-[80%]">
-        <h2 className="text-xl font-bold mb-2">{label}</h2>
-        <p className="text-4xl font-mono">{remaining}s</p>
+      <div
+        className={`bg-white text-black text-center shadow-xl flex flex-col items-center justify-center
+          ${isNextRound ? "w-full h-full rounded" : "mx-[10%] w-[80%] rounded-xl p-4"}
+        `}
+      >
+        <h2 className={`font-bold mb-2 ${isNextRound ? "text-3xl" : "text-xl"}`}>
+          {label}
+        </h2>
+        <p className={`${isNextRound ? "text-6xl" : "text-4xl"} font-mono`}>
+          {formattedTime}
+        </p>
       </div>
     </div>
   );
 };
 
-
- 
 
 const Room: React.FC = () => {
   const { roomId } = useParams();

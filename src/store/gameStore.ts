@@ -110,7 +110,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   endGame: async (roomId: string) => {
   try {
     const roomRef = ref(rtdb, `rooms/${roomId}`);
-    const cooldownDuration = 3 * 60 * 1000; // ✅ 3 min cooldown
+    const cooldownDuration = 1 * 60 * 1000; // ✅ 3 min cooldown
     const nextGameCountdownEndAt = Date.now() + cooldownDuration;
 
     // Step 1: End the game

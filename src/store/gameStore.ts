@@ -41,16 +41,20 @@ interface GameState {
   selectCard: (cardId: string) => void;
   placeBet: () => Promise<boolean>;
   checkBingo: () => Promise<boolean>;
+   displayedCalledNumbers: number[];
+  startNumberStream: (roomId: string, gameId: string) => void;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
   rooms: [],
+  displayedCalledNumbers: [],
   currentRoom: null,
   selectedCard: null,
   bingoCards: [],
   loading: false,
   startingGame: false, // ✅ Initialize startingGame flag
  // add this
+ 
   startGameIfCountdownEnded: async () => {
   const { currentRoom, startingGame } = get();
   if (!currentRoom || startingGame) return;
@@ -76,6 +80,31 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({ startingGame: false });
   }
 },
+    startNumberStream: (roomId, gameId) => {
+    const gameRef = ref(rtdb, `games/${gameId}`);
+    onValue(gameRef, (snapshot) => {
+      const data = snapshot.val();
+      if (!data || !data.drawnNumbers) return;
+
+      const numbers = data.drawnNumbers;
+
+      let i = 0;
+      set({ displayedCalledNumbers: [] });
+
+      const interval = setInterval(() => {
+        if (i >= numbers.length) {
+          clearInterval(interval);
+          return;
+        }
+
+        set((state) => ({
+          displayedCalledNumbers: [...state.displayedCalledNumbers, numbers[i]],
+        }));
+        i++;
+      }, 1000); // 1 second gap
+    });
+  },
+
 
   fetchRooms: () => {
     const roomsRef = ref(rtdb, 'rooms');

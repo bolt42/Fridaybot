@@ -35,7 +35,7 @@ const Room: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useLanguageStore();
    
-
+  
   const { currentRoom, bingoCards, joinRoom, selectCard, placeBet, checkBingo , selectedCard } = useGameStore();
   const { user, updateBalance } = useAuthStore();
  const userCard = bingoCards.find(
@@ -54,7 +54,14 @@ const Room: React.FC = () => {
   
 
   const cancelBet = useGameStore((state) => state.cancelBet);
+  const displayedCalledNumbers = useGameStore((s) => s.displayedCalledNumbers);
+const startNumberStream = useGameStore((s) => s.startNumberStream);
 
+React.useEffect(() => {
+  if (currentRoom?.gameStatus === "playing" && currentRoom.gameId) {
+    startNumberStream(currentRoom.id, currentRoom.gameId);
+  }
+}, [currentRoom?.gameStatus, currentRoom?.gameId]);
   
 
   React.useEffect(() => {

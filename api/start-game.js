@@ -40,7 +40,7 @@ export default async function handler(req, res) {
       room.countdownStartedBy = null;
       
       const betAmount = room.betAmount || 0;
-      const playerCount = room.currentPlayers || 0;
+      const playerCount = room.players.length || 0;
       const totalPayout = Math.floor(betAmount * playerCount * 0.9);
 
 

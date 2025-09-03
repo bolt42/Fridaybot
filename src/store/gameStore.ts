@@ -131,14 +131,17 @@ export const useGameStore = create<GameState>((set, get) => ({
 
       // ✅ Unclaim all cards in this room
       const cardsSnap = await get(cardsRef);
-      if (cardsSnap.exists()) {
-        const updates: any = {};
-        Object.entries(cardsSnap.val()).forEach(([cardId, card]: [string, any]) => {
-          updates[cardId] = { ...card, claimed: false };
-        });
-        await update(cardsRef, updates);
-        console.log("♻️ All cards reset.");
-      }
+if (cardsSnap.exists()) {
+  const updates: any = {};
+  Object.keys(cardsSnap.val()).forEach((cardId) => {
+    updates[`${cardId}/claimed`] = false;
+   
+  });
+
+  await update(cardsRef, updates);
+  console.log("♻️ All cards reset fast.");
+}
+
 
       // ✅ Reset the room to waiting
       await update(roomRef, {

@@ -124,6 +124,17 @@ React.useEffect(() => {
 
   
 }, [currentRoom]);
+// 👇 Reset local bet state when game ends & cards are unclaimed
+React.useEffect(() => {
+  if (!currentRoom) return;
+
+  if (currentRoom.gameStatus === "waiting") {
+    // If my userCard is gone (unclaimed) → reset bet state
+    if (!userCard) {
+      setHasBet(false);
+    }
+  }
+}, [currentRoom?.gameStatus, userCard]);
 
 React.useEffect(() => {
   if (!currentRoom?.countdownEndAt || currentRoom?.gameStatus !== "countdown") return;
@@ -378,16 +389,16 @@ return (
        {/* Bet button */}
 {displayedCard ? (
   <div className="mt-6">
-    {currentRoom?.gameStatus !== "playing" ? (
+    {currentRoom?.gameStatus === "waiting" ? (
       <button
         onClick={isBetActive ? handleCancelBet : handlePlaceBet}
         className={`mt-4 px-4 py-2 rounded-lg shadow font-semibold ${
-          isBetActive
+          isBetActive && userCard // ✅ only true if card still claimed
             ? "bg-red-600 hover:bg-red-700 text-white"
             : "bg-blue-600 hover:bg-blue-700 text-white"
         }`}
       >
-        {isBetActive
+        {isBetActive && userCard
           ? t("cancel_bet") + " card:" + displayedCard.serialNumber
           : t("place_bet") + " card:" + displayedCard.serialNumber}
       </button>

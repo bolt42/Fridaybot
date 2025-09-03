@@ -5,7 +5,7 @@ import { useLanguageStore } from '../store/languageStore';
 import { useGameStore } from '../store/gameStore';
 import { useAuthStore } from '../store/authStore';
 import BingoGrid from '../components/BingoGrid';
-const CountdownOverlay = ({ countdownEndAt }: { countdownEndAt: number }) => {
+const CountdownOverlay = ({ countdownEndAt, label }: { countdownEndAt: number; label: string }) => {
   const [remaining, setRemaining] = React.useState(
     Math.max(0, Math.floor((countdownEndAt - Date.now()) / 1000))
   );
@@ -22,13 +22,15 @@ const CountdownOverlay = ({ countdownEndAt }: { countdownEndAt: number }) => {
   return (
     <div className="absolute inset-0 bg-black/70 flex items-center justify-center rounded">
       <div className="bg-white text-black rounded-xl text-center shadow-xl mx-[10%] w-[80%]">
-        <h2 className="text-xl font-bold mb-2">Game starting soon</h2>
+        <h2 className="text-xl font-bold mb-2">{label}</h2>
         <p className="text-4xl font-mono">{remaining}s</p>
       </div>
     </div>
   );
 };
 
+
+ 
 
 const Room: React.FC = () => {
   const { roomId } = useParams();
@@ -45,7 +47,7 @@ const Room: React.FC = () => {
     card.claimedBy === user?.telegramId
 );
 
-
+const [remaining, setRemaining] = useState<number | null>(null);
      const displayedCard = userCard || selectedCard ;
  const cardNumbers = displayedCard?.numbers ?? [];
   const [markedNumbers, setMarkedNumbers] = useState<number[]>([]);
@@ -62,7 +64,7 @@ React.useEffect(() => {
     startNumberStream(currentRoom.id, currentRoom.gameId);
   }
 }, [currentRoom?.gameStatus, currentRoom?.gameId]);
-  
+
 
   React.useEffect(() => {
     if (roomId) {
@@ -270,10 +272,10 @@ return (
     </div>
 
     {/* Countdown overlay ONLY on top of numbers grid */}
-   {currentRoom?.gameStatus === "countdown" &&
- currentRoom.countdownEndAt && (
-  <CountdownOverlay countdownEndAt={currentRoom.countdownEndAt} />
+   {currentRoom?.gameStatus === "countdown" && currentRoom.countdownEndAt && (
+  <CountdownOverlay countdownEndAt={currentRoom.countdownEndAt} label="Game starting soon" />
 )}
+
 
   </div>
 </div>
@@ -286,7 +288,9 @@ return (
           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-lg font-bold shadow">
   {currentRoom?.lastCalledNumber ?? "-"}
 </div>
-
+       {currentRoom?.gameStatus === "ended" && currentRoom.nextGameCountdownEndAt && (
+  <CountdownOverlay countdownEndAt={currentRoom.nextGameCountdownEndAt} label="Next round starting in" />
+)}
         </div>
 
         {/* Card header */}

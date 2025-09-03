@@ -27,6 +27,8 @@ interface Room {
   countdownEndAt: number, 
   players?: { [id: string]: { id: string; username: string; betAmount: number; cardId: string } };
   gameId?: string;
+  nextGameCountdownEndAt?: number;
+
 }
 
 interface GameState {
@@ -108,6 +110,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   endGame: async (roomId: string) => {
   try {
     const roomRef = ref(rtdb, `rooms/${roomId}`);
+     const cooldownDuration = 2 * 60 * 1500; 
+    const nextGameCountdownEndAt = Date.now() + cooldownDuration;
 
 
     await update(roomRef, {
@@ -116,9 +120,17 @@ export const useGameStore = create<GameState>((set, get) => ({
       calledNumbers: [],
       countdownEndAt: null,
       countdownStartedBy: null,
+       nextGameCountdownEndAt, 
     });
 
     console.log("✅ Game ended. Next round countdown started.");
+    setTimeout(async () => {
+      await update(roomRef, {
+        gameStatus: "waiting",
+        nextGameCountdownEndAt: null,
+      });
+      console.log("✅ Room reset to waiting after cooldown.");
+    }, cooldownDuration);
   } catch (err) {
     console.error("❌ Failed to end game:", err);
   }
